@@ -190,3 +190,5 @@ new machine, agent or device, and no agent action waits for the owner
 | `cmd/aide-relay` | `setup-code`, `password` |
 | `pkg/mcpgw` | The consent page logs in (`relay.IssueGrant`) |
 | Tests | `pkg/relay/account_test.go` (`TestAccountLogIn`, `TestAccountSignsAndSignsOut`, `TestAccountFromAnOldPasswordLogin`); e2e `TestUserJourney`, `TestMachineOnlyMac`, `TestAccountsOnOneDevice`, `TestMCPGateway`, `TestMCPStrangers`, `TestEraseEverything`, `TestAndroidCore`, `TestEvilRelay` |
+
+<!-- CI 样本（工单 #33），不合并 -->
