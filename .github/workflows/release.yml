@@ -179,9 +179,15 @@ jobs:
       # pnpm first, at package.json's packageManager (no version here), so setup-node can cache its store.
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
+        id: setup-node-cache
         with:
           node-version: 24
           cache: pnpm
+      # One readable line per cache, in the log and the run summary.
+      - name: cache hit
+        shell: bash
+        run: |
+          echo "cache hit, setup-node (pnpm) in binaries: ${{ steps.setup-node-cache.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: her console
         run: pnpm install --frozen-lockfile --filter "@aide/her-console..." && pnpm --dir her/apps/console build
       - uses: actions/download-artifact@v4
@@ -244,9 +250,15 @@ jobs:
       # pnpm first, at package.json's packageManager (no version here), so setup-node can cache its store.
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
+        id: setup-node-cache
         with:
           node-version: 24
           cache: pnpm
+      # One readable line per cache, in the log and the run summary.
+      - name: cache hit
+        shell: bash
+        run: |
+          echo "cache hit, setup-node (pnpm) in windows-app: ${{ steps.setup-node-cache.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
       - run: pnpm install --frozen-lockfile
       # The PPT and Word engines are a private repository (her/Cargo.toml): cargo fetches it with this token.
       - name: Read access to the NimbleOffice fork
@@ -283,10 +295,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
+        id: setup-java-cache
         with:
           distribution: temurin
           java-version: '17'
           cache: gradle
+      # One readable line per cache, in the log and the run summary.
+      - name: cache hit
+        shell: bash
+        run: |
+          echo "cache hit, setup-java (gradle) in android: ${{ steps.setup-java-cache.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod

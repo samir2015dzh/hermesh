@@ -6,11 +6,39 @@ on:
   # By hand, on any branch: Windows work is tried on Windows runners there
   # before it reaches main (docs/windows.md).
   workflow_dispatch:
+  # Every day, the whole Linux line with race-detector binaries (work order #33's
+  # safety net): whatever a pull request's selective run left out is raced here
+  # and on main's push. The Windows lines do not run on it.
+  schedule:
+    - cron: '17 3 * * *'
+# A pull request's newer commit cancels its older run; main's pushes and the
+# daily run are never cancelled half way (they are where every test gets raced).
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  # What the Linux line runs (work order #33): everything on main's pushes, the
+  # daily run and runs by hand; on a pull request, the unit tests and race
+  # detector its changes reach (scripts/ci_select.py, which runs everything
+  # when in doubt). Its log and summary list what runs and what is skipped.
+  select:
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.select.outputs.mode }}
+      unit: ${{ steps.select.outputs.unit }}
+      e2e: ${{ steps.select.outputs.e2e }}
+      race: ${{ steps.select.outputs.race }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - id: select
+        run: python3 scripts/ci_select.py --base "origin/${GITHUB_BASE_REF:-main}"
   go:
+    needs: select
     strategy:
       # Linux alone (the owner's servers run Debian; there's no Mac app): kept by
       # the owner's ruling, 2026-11-18, while Windows runs everything else.
@@ -24,19 +52,25 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      # Docs or the Android app alone (select's docs mode): nothing here reads them.
       - name: lint
+        if: needs.select.outputs.mode != 'docs'
         run: make lint
       - name: contract compatibility
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && needs.select.outputs.mode != 'docs'
         run: go tool buf breaking --against '.git#branch=origin/main'
+      # make test's packages, or a pull request's share of them (select).
       - name: unit tests
-        run: make test
+        if: needs.select.outputs.unit != ''
+        run: go test ${{ needs.select.outputs.unit }} -count=1
       # The relay image builds from its own context (.dockerignore): built here,
       # not pushed, so that a package that context leaves out fails on the PR,
       # not first in relay-image (2026-11-20: apps/dsh-bridge).
       - name: relay image
+        if: needs.select.outputs.mode != 'docs'
         run: docker build -f deploy/relay/Dockerfile .
       - name: installer terminal interaction
+        if: needs.select.outputs.mode != 'docs'
         run: python3 scripts/test_install.py
       # The desktop app's and Her's TypeScript: types and unit tests (they ran on
       # the macOS app job, gone with the Mac app). After the end-to-end tests:
@@ -44,11 +78,21 @@ jobs:
       # this runner (the desktop's end-to-end tests run on windows-app).
       # pnpm first, at package.json's packageManager (no version here), so setup-node can cache its store.
       - uses: pnpm/action-setup@v4
+        if: needs.select.outputs.mode != 'docs'
       - uses: actions/setup-node@v4
+        if: needs.select.outputs.mode != 'docs'
+        id: setup-node-cache
         with:
           node-version: 24
           cache: pnpm
+      # One readable line per cache, in the log and the run summary.
+      - name: cache hit
+        if: needs.select.outputs.mode != 'docs'
+        shell: bash
+        run: |
+          echo "cache hit, setup-node (pnpm) in go: ${{ steps.setup-node-cache.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: types and unit tests (TypeScript)
+        if: needs.select.outputs.mode != 'docs'
         run: |
           pnpm install --frozen-lockfile
           pnpm -r typecheck
@@ -64,6 +108,8 @@ jobs:
   # Electron's sandbox can't on this runner (it runs on windows-app).
   e2e:
     name: e2e (${{ matrix.shard }}/4)
+    needs: select
+    if: needs.select.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     strategy:
       # A red shard leaves the others running: one run shows every failure.
@@ -78,12 +124,15 @@ jobs:
       - name: end-to-end (scripted agents)
         shell: bash
         env:
-          # Race-detector binaries in every shard: a data race fails the test.
-          AIDE_E2E_RACE: '1'
+          # Race-detector binaries (a data race fails the test): every one on
+          # main's pushes and the daily run; on a pull request, those select
+          # found its changes reach.
+          AIDE_E2E_RACE: ${{ needs.select.outputs.race }}
         run: |
           go test ./e2e/ -list '^Test' > "$RUNNER_TEMP/e2e-tests.txt"
           run=$(python3 scripts/e2e_shards.py run-pattern --of ${{ strategy.job-total }} --shard ${{ matrix.shard }} "$RUNNER_TEMP/e2e-tests.txt")
           echo "this shard: $run"
+          echo "race detector: ${AIDE_E2E_RACE:-none} (1 = every binary)"
           # make e2e, with this shard's tests and -v for the ledger.
           go test ./e2e/ -count=1 -timeout 45m -v -run "$run" 2>&1 | tee "$RUNNER_TEMP/e2e.log"
       - if: always()
@@ -95,8 +144,8 @@ jobs:
   # Every listed test ran exactly once, in the shard it was given to; the
   # summary carries the times measured, for scripts/e2e_shard_times.json.
   e2e-ledger:
-    needs: e2e
-    if: always()
+    needs: [select, e2e]
+    if: always() && needs.select.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -114,9 +163,28 @@ jobs:
           logs=()  # one per shard of the e2e matrix, in order
           for i in 1 2 3 4; do logs+=("$RUNNER_TEMP/shards/e2e-shard-$i/e2e.log"); done
           python3 scripts/e2e_shards.py ledger --of 4 "$RUNNER_TEMP/e2e-tests.txt" "${logs[@]}" | tee "$RUNNER_TEMP/ledger.txt"
-          { echo '```'; cat "$RUNNER_TEMP/ledger.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "race detector in every shard: ${RACE:-none} (1 = every binary)"; echo '```'; cat "$RUNNER_TEMP/ledger.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          RACE: ${{ needs.select.outputs.race }}
+  # One check for the whole Linux line, whatever select skipped: red when any
+  # part of it failed, green when each passed or was skipped by select.
+  linux:
+    needs: [select, go, e2e, e2e-ledger]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          RESULTS: select=${{ needs.select.result }} go=${{ needs.go.result }} e2e=${{ needs.e2e.result }} e2e-ledger=${{ needs.e2e-ledger.result }}
+          MODE: ${{ needs.select.outputs.mode }}
+        run: |
+          echo "mode: $MODE; $RESULTS"
+          for r in $RESULTS; do
+            case "$r" in select=success|*=success|*=skipped) ;; *) echo "::error::$r"; exit 1 ;; esac
+          done
+          case "$RESULTS" in select=success*) ;; *) echo "::error::select did not succeed"; exit 1 ;; esac
   # Windows (docs/windows.md): what is ported so far.
   windows:
+    if: github.event_name != 'schedule'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -132,6 +200,7 @@ jobs:
   # The end-to-end suite on Windows, being ported (docs/windows.md, W1): its
   # failures do not fail the run yet.
   windows-e2e:
+    if: github.event_name != 'schedule'
     runs-on: windows-latest
     continue-on-error: true
     steps:
@@ -142,11 +211,17 @@ jobs:
       # her's debug build, kept apart from her-ci's and windows-app's (deleted with her).
       # Saved when the tests after it fail too: this job's failures are allowed for now.
       - uses: Swatinem/rust-cache@v2
+        id: rust-cache
         with:
           workspaces: her -> target
           key: ci-windows-e2e
           save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           cache-on-failure: true
+      # One readable line per cache, in the log and the run summary.
+      - name: cache hit
+        shell: bash
+        run: |
+          echo "cache hit, rust-cache (rust) in windows-e2e: ${{ steps.rust-cache.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Build Her for its end-to-end tests
         shell: bash
         env:
@@ -165,6 +240,7 @@ jobs:
   # against the real daemon, then the package, installed in Developer Mode
   # with its aliases checked. Its failures do not fail the run yet.
   windows-app:
+    if: github.event_name != 'schedule'
     runs-on: windows-latest
     continue-on-error: true
     steps:
@@ -175,9 +251,15 @@ jobs:
       # pnpm first, at package.json's packageManager (no version here), so setup-node can cache its store.
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
+        id: setup-node-cache
         with:
           node-version: 24
           cache: pnpm
+      # One readable line per cache, in the log and the run summary.
+      - name: cache hit
+        shell: bash
+        run: |
+          echo "cache hit, setup-node (pnpm) in windows-app: ${{ steps.setup-node-cache.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
       - run: pnpm install --frozen-lockfile
       - name: end-to-end (desktop app)
         run: go test ./e2e -run '^TestDesktop$' -count=1 -v -timeout 30m
@@ -196,10 +278,16 @@ jobs:
       # The package's her build (release profile, MSVC target), kept apart from the others
       # (deleted with her).
       - uses: Swatinem/rust-cache@v2
+        id: rust-cache
         with:
           workspaces: her -> target
           key: ci-windows-app
           save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      # One readable line per cache, in the log and the run summary.
+      - name: cache hit
+        shell: bash
+        run: |
+          echo "cache hit, rust-cache (rust) in windows-app: ${{ steps.rust-cache.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
       # her is built once, with the profile that takes the least of this job's time.
       - name: package
         run: node apps/desktop/scripts/package-win.mjs

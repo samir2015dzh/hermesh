@@ -16,10 +16,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
+        id: setup-java-cache
         with:
           distribution: temurin
           java-version: '17'
           cache: gradle
+      # One readable line per cache, in the log and the run summary.
+      - name: cache hit
+        shell: bash
+        run: |
+          echo "cache hit, setup-java (gradle) in apk: ${{ steps.setup-java-cache.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
