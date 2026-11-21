@@ -1,0 +1,33 @@
+# 原型，不合并（交接仓 TAURI-EVAL.md）：Tauri 外壳原型的 Windows 包，供所有者在真机上同页对比。
+# Only on the prototype's branch: by hand, or a push there that changes the prototype. (GitHub runs a
+# workflow_dispatch-only workflow only once it is on the default branch, which this one must never be:
+# the push is what registers it on this branch.) It is in no other workflow and builds nothing of the app's.
+name: tauri-prototype
+on:
+  workflow_dispatch:
+  push:
+    branches: [prototype/tauri-shell]
+    paths: ["prototypes/tauri-shell/**", ".github/workflows/tauri-prototype.yml"]
+jobs:
+  windows:
+    if: github.ref == 'refs/heads/prototype/tauri-shell'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: renderer (apps/desktop's, unchanged, api.ts swapped)
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+          node prototypes/tauri-shell/build-renderer.mjs
+      - name: shell and NSIS installer
+        working-directory: prototypes/tauri-shell/src-tauri
+        run: npx --yes @tauri-apps/cli@2.12.4 build --bundles nsis
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aide-tauri-prototype-windows-x64
+          path: |
+            prototypes/tauri-shell/src-tauri/target/release/aide-tauri-proto.exe
+            prototypes/tauri-shell/src-tauri/target/release/bundle/nsis/*.exe

@@ -1,0 +1,5 @@
+# 原型，不合并
+/dist/
+/src-tauri/target/
+/src-tauri/gen/
+/shots/

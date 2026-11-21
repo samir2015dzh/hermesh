@@ -1,0 +1,32 @@
+# 原型，不合并：Electron → Tauri 评估用（交接仓 TAURI-EVAL.md）。不进主线构建。
+[package]
+name = "aide-tauri-proto"
+version = "0.0.1"
+edition = "2021"
+publish = false
+
+# Standalone: not part of her/'s Cargo workspace or any other.
+[workspace]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-notification = "2"
+tauri-plugin-single-instance = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "time", "sync", "fs"] }
+hyper = { version = "1", features = ["http1", "client", "server"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+bytes = "1"
+prost = "0.13"
+serde = { version = "1", features = ["derive"] }
+
+[profile.release]
+# As small as Tauri's own guide sets it, so the size compared is a fair one.
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
