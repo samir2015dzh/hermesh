@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -16,9 +15,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	herv1 "github.com/samir2015dzh/aide/gen/go/aide/her/v1"
 	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
-	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/pkg/identity"
 )
@@ -205,158 +202,6 @@ func TestPushNotices(t *testing.T) {
 func mustGlob(dir string) []string {
 	m, _ := filepath.Glob(filepath.Join(dir, "*.json"))
 	return m
-}
-
-// TestPushHerNotices: Her on the owner Mac's own machine tells a device
-// registered for "her" what the Mac app's notifications tell
-// (notices.ts herNotices): her reply, a question she asks and the words of
-// a secure card she waits on, one sealed notice each, which only the device
-// opens. A muted assistant tells nothing, nor does unmuting it, nor her
-// starting again with what she had.
-func TestPushHerNotices(t *testing.T) {
-	if testing.Short() {
-		t.Skip("e2e")
-	}
-	her, mockBin := herBinaries(t)
-	mock := startHerMock(t, mockBin)
-	w := newOwnerMac(t, herEnv(her, herConsole(t), herHome(t, mock.models), mock.base), &localv1.GrantSpec{})
-	// Stopped as a service is, so that it stops her.
-	t.Cleanup(func() { w.owner.stop() })
-	spool := filepath.Join(t.TempDir(), "push")
-	w.relayArgs = append(w.relayArgs, "--push-spool", spool)
-	w.restartRelay()
-	eventually(t, 30*time.Second, "the machine is back on the relay", func() bool {
-		r := w.cli(30*time.Second, "project", "list")
-		return r.code == 0 && strings.Contains(r.stdout, "owner-mac/demo")
-	})
-	c := w.app.client
-	ctx := context.Background()
-	mac := localMachine(t, c)
-	turnHerOn(t, c, mac)
-	bot := defaultBot(t, c, mac)
-
-	key, _ := ecdh.X25519().GenerateKey(rand.Reader)
-	var err error
-	for i := 0; i < 50; i++ { // until the owner is back on the restarted relay
-		if _, err = c.RegisterPush(ctx, &localv1.RegisterPushRequest{Token: "abc123", Environment: "development",
-			NoticePublicKey: key.PublicKey().Bytes(), Kinds: []string{"her"}}); err == nil {
-			break
-		}
-		time.Sleep(200 * time.Millisecond)
-	}
-	if err != nil {
-		t.Fatalf("register: %v", err)
-	}
-	// The machine hears of the registration over its update stream.
-	time.Sleep(time.Second)
-
-	seen := map[string]bool{}
-	notices := func() (out []*sessionv1.Notice) {
-		t.Helper()
-		for _, s := range readSpool(t, spool, seen) {
-			// Sent at once, as the owner waits for her; but not time-sensitive, which would break through Focus.
-			if s.Token != "abc123" || s.Payload.Aide.K != "her" || s.Payload.Aps.MutableContent != 1 || s.Payload.Aps.ThreadID == "" ||
-				!s.Urgent || s.Payload.Aps.InterruptionLevel != "active" {
-				t.Fatalf("payload: %+v", s)
-			}
-			sealed, _ := base64.StdEncoding.DecodeString(s.Payload.Aide.N)
-			n := &sessionv1.Notice{}
-			if err := identity.OpenNotice(key.Bytes(), sealed, n); err != nil {
-				t.Fatalf("open notice: %v", err)
-			}
-			out = append(out, n)
-		}
-		return out
-	}
-	// one waits for the one notice a step makes: nothing more follows it.
-	one := func(herKind, text string) {
-		t.Helper()
-		var got []*sessionv1.Notice
-		eventually(t, 30*time.Second, "a "+herKind+" notice", func() bool {
-			got = append(got, notices()...)
-			return len(got) > 0
-		})
-		time.Sleep(2 * time.Second)
-		got = append(got, notices()...)
-		if n := got[0]; len(got) != 1 || n.Kind != "her" || n.HerKind != herKind || n.Text != text || n.MachineId != mac || n.Machine != "owner-mac" ||
-			n.BotId != bot.ID || n.BotName != bot.Name || n.At == nil {
-			t.Fatalf("want one %s notice %q, got %v", herKind, text, got)
-		}
-	}
-	none := func(what string) {
-		t.Helper()
-		time.Sleep(2 * time.Second)
-		if got := notices(); len(got) != 0 {
-			t.Fatalf("%s: %v", what, got)
-		}
-	}
-	send := func(text string) {
-		t.Helper()
-		if res, err := c.HerSend(ctx, &localv1.HerSendRequest{MachineId: mac, BotId: bot.ID, Text: text}); err != nil || !res.Delivered {
-			t.Fatalf("HerSend: %v %v", res, err)
-		}
-	}
-	mute := func(on bool) {
-		t.Helper()
-		res, err := c.HerCall(ctx, &localv1.HerCallRequest{MachineId: mac, Call: &herv1.CallRequest{Request: herSetup("bots/update", map[string]any{"bot_id": bot.ID, "muted": on})}})
-		if err != nil || res.Response.GetError() != nil {
-			t.Fatalf("bots/update: %v %v", res, err)
-		}
-	}
-
-	// Her's reply.
-	send(mockSend("早上好，今天有三件事。"))
-	one("message", "早上好，今天有三件事。")
-
-	// Muted, she tells nothing; unmuted, nothing either until she has more.
-	mute(true)
-	talk(t, c, mac, bot.ID, "静音时说的话")
-	none("a muted assistant's notice")
-	mute(false)
-	none("a notice for unmuting")
-
-	// A question.
-	send("[[mock:ask:先发给谁？|财务|所有人]] 然后呢")
-	one("question", "先发给谁？")
-
-	// This Mac's aided starting again, and her with it: what she had
-	// before is no news.
-	w.restartOwner(false)
-	c = w.app.client
-	eventually(t, 2*time.Minute, "her running again", func() bool { return listedMachine(t, c, mac).GetHer().GetRunning() })
-	none("a notice for what her had before she started")
-
-	// A secure card: what still waits for the owner, since she runs actions
-	// without asking. A connector to sign in to, her-mock's
-	// her-mcp-server with OAuth.
-	tracker := start(t, "tracker", nil, herMCPServer(t), "--http", "127.0.0.1:0", "--oauth", "--name", "tracker")
-	var address string
-	eventually(t, 20*time.Second, "the tracker's address", func() bool {
-		address = regexp.MustCompile(`http://\S+/mcp`).FindString(tracker.output())
-		return address != ""
-	})
-	// Her's words with the card come as her message, and the card waiting
-	// by them is that message again: no second notice (notices.ts
-	// herNotices; herhost's TestSnapshotNews). The machine's status says it
-	// waits.
-	const words = "这件事要用到它，请在卡片上确认。"
-	send("[[mock:connect:tracker|" + address + "]] 接上我的 tracker")
-	one("message", words)
-	eventually(t, 30*time.Second, "the card waiting, in the machine's status", func() bool {
-		l := listedMachine(t, c, mac).GetHer().GetLatest()
-		return l.GetBotId() == bot.ID && l.GetKind() == machinev1.HerLatestKind_HER_LATEST_KIND_APPROVAL && l.GetText() == words
-	})
-	none("a second notice for the card waiting")
-
-	// The push service got none of it in the clear.
-	for _, f := range mustGlob(spool) {
-		raw, _ := os.ReadFile(f)
-		for _, s := range []string{"早上好", "静音", "先发给谁", "请在卡片上确认", bot.ID, mac} {
-			if strings.Contains(string(raw), s) {
-				t.Fatalf("%q in the push payload: %s", s, raw)
-			}
-		}
-	}
 }
 
 // TestPushNoticeWaitsForRelay: a session asks its question while the

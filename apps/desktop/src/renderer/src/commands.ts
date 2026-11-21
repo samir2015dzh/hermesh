@@ -21,7 +21,6 @@ export function useCommands() {
   const s = selected(st);
   const state: MenuState = {
     main: true,
-    her: st.selection.kind === "her",
     session: s
       ? {
           interruptible: isInterruptible(s),
@@ -39,7 +38,7 @@ export function useCommands() {
   };
   const key = JSON.stringify(state);
   useEffect(() => window.aide?.setMenuState(JSON.parse(key)), [key]);
-  useEffect(() => () => window.aide?.setMenuState({ main: false, her: false, session: null, sidebar: true, undo: false }), []);
+  useEffect(() => () => window.aide?.setMenuState({ main: false, session: null, sidebar: true, undo: false }), []);
 }
 
 function selected(st: Store): Session | undefined {
@@ -92,9 +91,6 @@ function run(st: Store, c: Command) {
   switch (verb) {
     case "open":
       return open(st, arg);
-    case "her":
-      // A notification's: the Her entry, in its environment.
-      return st.set({ selection: { kind: "her", machine: arg } });
   }
 }
 

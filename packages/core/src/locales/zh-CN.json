@@ -92,11 +92,7 @@
     "failedBody": "{{grant}} · {{agent}} · {{project}}。{{advice}}",
     "turnDoneTitle": "「{{title}}」第 {{turn}} 轮完成",
     "noChanges": "没有改动文件",
-    "changes_other": "{{count}} 个文件 +{{insertions}} −{{deletions}}",
-    "herName": "Her",
-    "herTitle": "{{name}} · {{environment}}",
-    "herApproval": "等你批准：{{text}}",
-    "herQuestion": "等你回答：{{text}}"
+    "changes_other": "{{count}} 个文件 +{{insertions}} −{{deletions}}"
   },
   "resolution": {
     "answeredByYou": "你回答：{{answers}}",

@@ -111,20 +111,8 @@ type Owner struct {
 	// asked).
 	wiping bool
 
-	// Her (her.go). herWake has the waiting messages tried now; herSeen
-	// is each machine's Her as last seen, kept in the store.
-	herWake chan struct{}
-	herBots sync.Map // each assistant's delivery lock, by machine/assistant (herBotLock)
-	herMu   sync.Mutex
-	herSeen map[string]*machinev1.HerStatus
-	// herReach, when set, is how tests reach a machine's HerService.
-	herReach func(ctx context.Context, machineID string) (herMachine, error)
 	// signHook, when set, is how tests have something signed (signRoot).
 	signHook func(ctx context.Context, msgs []proto.Message) ([]*identityv1.Signed, error)
-	// herInfo, when set, is how tests read a machine's status for Her.
-	herInfo   func(ctx context.Context, machineID string) (*machinev1.MachineStatus, error)
-	consoleMu sync.Mutex
-	console   *herConsole // serving the consoles, once asked for one
 
 	directMu   sync.Mutex
 	direct     map[string][]string // machineID -> normalized direct_addrs, persisted under kDirectAddrs
@@ -184,13 +172,12 @@ func openProfile(cfg Config) (*Owner, error) {
 		lock.Release()
 		return nil, err
 	}
-	o := &Owner{cfg: cfg, log: cfg.Logger, st: st, lock: lock, herWake: make(chan struct{}, 1), limits: sessionstate.FromEnv()}
+	o := &Owner{cfg: cfg, log: cfg.Logger, st: st, lock: lock, limits: sessionstate.FromEnv()}
 	o.rep = newReplica(o)
 	return o, o.load()
 }
 
 func (o *Owner) load() error {
-	o.herSeen, _ = o.st.herStatuses()
 	account, _ := o.st.get(kAccount)
 	o.account = string(account)
 	seen, _ := o.st.get(kSeenOnline)
@@ -275,7 +262,6 @@ func (o *Owner) Run(ctx context.Context) {
 		}
 	}
 	go o.namePending(ctx)
-	go o.deliverWaiting(ctx)
 	o.stayConnected(ctx)
 	o.mu.Lock()
 	if o.client != nil && o.client != o.kept {
@@ -1840,20 +1826,20 @@ func (o *Owner) SetAgentHidden(ctx context.Context, machineID, agent string, hid
 	return err
 }
 
-// RemoveMachine removes a machine; with eraseHer, Her's data there is
-// erased first (docs/her-server.md §5.6), which needs the machine to answer:
-// otherwise nothing is removed.
+// RemoveMachine removes a machine; with eraseHer, the data Her left there
+// (from before Aide dropped her) is erased first, which needs the machine to
+// answer: otherwise nothing is removed.
 func (o *Owner) RemoveMachine(ctx context.Context, machineID string, eraseHer bool) error {
 	ctl, _, err := o.control(ctx)
 	if err != nil {
 		return err
 	}
 	if eraseHer {
-		if err := o.SetHer(ctx, machineID, false, true); err != nil {
+		if err := o.eraseHerData(ctx, machineID); err != nil {
 			return err
 		}
 	}
-	// Her on that machine goes with it (docs/her-mesh.md §3.5).
+	// A grant Her held on that machine, from before Aide dropped her, goes with it.
 	her := o.herGrants(ctx, machineID)
 	if _, err := ctl.Revoke(ctx, &relayv1.RevokeRequest{Revocations: &identityv1.RevocationList{OwnerId: o.ownerID, RevokedMachineIds: []string{machineID}, RevokedGrantIds: her}}); err != nil {
 		return err

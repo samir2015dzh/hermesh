@@ -27,8 +27,8 @@ import (
 
 // The control socket lets `aided project …`, `aided roots …` and `aided config …` change a
 // running machine's projects and workspace roots, `aided doctor` and
-// `status` ask it how it is, and `uninstall` and `erase` whether Her's
-// data is kept (the machine holds its data directory). Projects are the machine's own settings: whoever has a
+// `status` ask it how it is, and `uninstall` and `erase` whether data of
+// Her's, from before Aide dropped her, is kept (the machine holds its data directory). Projects are the machine's own settings: whoever has a
 // shell as this user can do as much already, so only this user may connect.
 
 func (n *Machine) serveControl(ctx context.Context) {
@@ -117,8 +117,8 @@ type Check struct {
 	MachineID, Name, OwnerID, RelayURL, Version string
 	Paired, Connected                           bool
 	Agents                                      map[string]provider.Info
-	Busy                                        int                  // sessions a restart would stop, Her's work among them
-	Her                                         *machinev1.HerStatus // as aided last saw her
+	Busy                                        int                  // sessions a restart would stop
+	Her                                         *machinev1.HerStatus // that this machine has none, and whether her data is kept
 	Power                                       *resident.State      `json:",omitempty"` // the running aided's power saving
 }
 
@@ -128,10 +128,9 @@ func (n *Machine) Check(ctx context.Context) Check {
 }
 
 // Busy counts the sessions a restart would stop: queued, preparing,
-// running or waiting for an answer; and Her's assistants at work, which
-// stop with her.
+// running or waiting for an answer.
 func (n *Machine) Busy() int {
-	return n.sessions.Running() + int(n.sessions.counts[sessionv1.SessionStatus_SESSION_STATUS_QUEUED].Load()) + n.her.Busy()
+	return n.sessions.Running() + int(n.sessions.counts[sessionv1.SessionStatus_SESSION_STATUS_QUEUED].Load())
 }
 
 // power is this process's power saving, when it runs one (aided run).
@@ -141,9 +140,6 @@ func power() *resident.State {
 	}
 	return nil
 }
-
-// HerPid is her's process while she runs, else 0.
-func (n *Machine) HerPid() int { return n.her.Pid() }
 
 // ApplyLocal applies a change from this machine's own user: adding or
 // removing a project, or setting the workspace roots; nothing else.

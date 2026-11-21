@@ -153,9 +153,11 @@ export function releaseCatalog(en: Record<string, ReleaseSummary>, zh: Record<st
 /**
  * Why version can't be released yet ("" when it can): each catalog needs
  * the version's own highlights, at least one line, within what the update
- * window takes (feedNotes).
+ * window takes (feedNotes). With headings (the catalogs' updates.json), the
+ * install guide the release's text opens with needs every one of its lines
+ * too: one that is missing is named here, before releaseBody writes them.
  */
-export function releaseNotesProblem(en: Record<string, ReleaseSummary>, zh: Record<string, ReleaseSummary>, version: string): string {
+export function releaseNotesProblem(en: Record<string, ReleaseSummary>, zh: Record<string, ReleaseSummary>, version: string, headings?: { en: Headings; "zh-CN": Headings }): string {
   for (const [lang, catalog] of [["en", en], ["zh-CN", zh]] as const) {
     const s = catalog[version];
     if (!s) return `${lang}/releases.json has no "${version}": move "unreleased" there (both languages) and write what changed for users`;
@@ -163,12 +165,21 @@ export function releaseNotesProblem(en: Record<string, ReleaseSummary>, zh: Reco
     if (lines.length === 0) return `${lang}/releases.json lists nothing for "${version}"`;
     if (s.improvements.length > 10 || s.fixes.length > 10 || lines.some((l) => !l.trim() || l.length > 1000)) return `${lang}/releases.json: "${version}" has more than 10 lines in a list, or an empty or over-long line`;
   }
+  for (const lang of ["en", "zh-CN"] as const) {
+    const g: Partial<InstallGuide> | undefined = headings?.[lang].install;
+    if (!headings) continue;
+    if (!g) return `${lang}/updates.json has no "install": the guide a release's text opens with`;
+    const missing = installLines.filter((k) => typeof g[k] !== "string" || !g[k].trim());
+    if (missing.length > 0) return `${lang}/updates.json: "install" lacks ${missing.map((k) => `"${k}"`).join(", ")}`;
+  }
   return "";
 }
 
 /** Which file is for what, at the top of a release's text (updates.json's install). */
 type InstallGuide = { heading: string; mac: string; windows: string; machine: string; device: string; cli: string; relay: string; note: string };
 type Headings = { improvements: string; fixes: string; install?: InstallGuide };
+/** Every line of the guide: its heading, one line per place to install, and the note under them. */
+const installLines = ["heading", "mac", "windows", "machine", "device", "cli", "relay", "note"] as const satisfies readonly (keyof InstallGuide)[];
 
 /**
  * The GitHub release's text: what to install (with the install command and

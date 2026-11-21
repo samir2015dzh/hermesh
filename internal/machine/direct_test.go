@@ -17,7 +17,7 @@ import (
 )
 
 func TestStatusForHidesDirectAddrs(t *testing.T) {
-	n := openHerMachine(t, t.TempDir(), "")
+	n := openPlainMachine(t)
 	defer n.Close()
 	n.directPort.Store(45678)
 
@@ -35,7 +35,7 @@ func TestStatusForHidesDirectAddrs(t *testing.T) {
 }
 
 func TestServeDirectOwnerOnlyAndH2(t *testing.T) {
-	n := openHerMachine(t, t.TempDir(), "")
+	n := openPlainMachine(t)
 	defer n.Close()
 
 	root, err := identity.GenerateKey()

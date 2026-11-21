@@ -14,7 +14,6 @@ import (
 
 	"connectrpc.com/connect"
 
-	"github.com/samir2015dzh/aide/gen/go/aide/her/v1/herv1connect"
 	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 	"github.com/samir2015dzh/aide/gen/go/aide/machine/v1/machinev1connect"
 	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
@@ -39,9 +38,6 @@ func (n *Machine) runLink(ctx context.Context) {
 		n.refused = gone(err)
 		refused := n.refused
 		n.mu.Unlock()
-		if refused {
-			n.stopHerRemoved()
-		}
 		if refused && n.cfg.SelfErase && n.checkErase(ctx) {
 			n.mu.Lock()
 			n.erased = true
@@ -271,16 +267,14 @@ func (n *Machine) handler() http.Handler {
 	mux.Handle(machinev1connect.NewMachineServiceHandler(&machineService{n: n}, opts))
 	mux.Handle(machinev1connect.NewMachineAdminServiceHandler(&adminService{n: n}, opts))
 	mux.Handle(machinev1connect.NewMachineOpsServiceHandler(&opsService{n: n}, opts))
-	mux.Handle(herv1connect.NewHerServiceHandler(&herService{n: n}, opts))
-	mux.Handle("/her/console/", n.herConsole())
 	return mux
 }
 
 var errUnauthenticated = errors.New("unauthenticated")
 
 // authInterceptor re-checks the caller's grant on every request (it may
-// have been revoked since the tunnel opened) and keeps admin RPCs and Her's
-// to the owner.
+// have been revoked since the tunnel opened) and keeps admin RPCs to the
+// owner.
 func (n *Machine) authInterceptor() connect.Interceptor {
 	check := func(ctx context.Context, procedure string) error {
 		p := principalFrom(ctx)
@@ -301,7 +295,7 @@ func (n *Machine) authInterceptor() connect.Interceptor {
 }
 
 func isAdminProcedure(p string) bool {
-	return strings.HasPrefix(p, "/"+machinev1connect.MachineAdminServiceName+"/") || strings.HasPrefix(p, "/"+herv1connect.HerServiceName+"/")
+	return strings.HasPrefix(p, "/"+machinev1connect.MachineAdminServiceName+"/")
 }
 
 type interceptor struct {

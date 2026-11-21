@@ -55,10 +55,8 @@ class NoticesTest {
         assertEquals("3 files +10 −4", done.body)
         assertEquals("No file changes", show(parseNotice("""{"kind":"turn_done","title":"Fix","turn":1}""")).body)
 
-        val her = show(parseNotice("""{"kind":"her","herKind":"approval","machineId":"m_1","botId":"b1","botName":"Her","text":"Send the email?"}"""))
-        assertEquals("Her", her.title)
-        assertEquals("Waiting for you: Send the email?", her.body)
-        assertEquals(NoticeTarget(herMachine = "m_1"), her.target)
+        // A notice of Her's, from a machine whose Aide still has her: nothing here opens it.
+        assertTrue(show(parseNotice("""{"kind":"her","herKind":"approval","machineId":"m_1","botId":"b1","botName":"Her","text":"Send the email?"}""")).target.isEmpty)
 
         val unknown = show(parseNotice("""{"kind":"something_new"}"""))
         assertTrue(unknown.target.isEmpty)

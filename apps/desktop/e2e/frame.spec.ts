@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { cli, fixture, launch, snap, sessionList, navTo } from "./app";
 
-// The main window's frame (docs/her-team.md §16): the sidebar is Her, the overview, and every session as the owner
+// The main window's frame: the sidebar is the overview, and every session as the owner
 // views them: by status, titles alone, until they choose otherwise.
 test("the sidebar groups sessions by status: needs you, running, done; archived only on request", async () => {
   const { app, page } = await launch(fixture.socket, { profile: fs.mkdtempSync(path.join(os.tmpdir(), "hmdesk-")) });
@@ -27,7 +27,7 @@ test("the sidebar groups sessions by status: needs you, running, done; archived 
   await app.close();
 });
 
-// The sidebar reads calmly: Her and the overview a row apart, a hairline, the sessions' heading with the view
+// The sidebar reads calmly: the overview, a hairline, the sessions' heading with the view
 // menu at its end; search and the toggle in the top band; 13px titles; a quiet foot, a dot only when something
 // is wrong, and no count of machines.
 test("the sidebar keeps one rhythm, one heading per group and a quiet foot", async () => {
@@ -36,11 +36,9 @@ test("the sidebar keeps one rhythm, one heading per group and a quiet foot", asy
   const centre = async (l: ReturnType<typeof page.locator>) => ((b) => b.y + b.height / 2)(await box(l));
   const hide = await centre(page.getByRole("button", { name: "收成窄栏" }));
   const nav = page.locator(".side-nav");
-  await expect(nav.getByRole("button")).toHaveText([/^Her/, /^概览/, "连接 Agent"]);
-  const her = await box(nav.getByRole("button", { name: /^Her/ }));
+  await expect(nav.getByRole("button")).toHaveText([/^概览/, "连接 Agent"]);
   const overview = await box(nav.getByRole("button", { name: /^概览/ }));
   expect(overview.height).toBe(32);
-  expect(overview.y - her.y).toBe(34);
   // Search shares the top band with the toggle, at its end.
   const search = page.locator(".side-top").getByRole("button", { name: "搜索" });
   expect(Math.abs((await centre(search)) - hide)).toBeLessThanOrEqual(1);

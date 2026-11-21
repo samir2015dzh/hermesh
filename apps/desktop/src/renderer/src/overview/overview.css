@@ -14,8 +14,6 @@
 @media (prefers-color-scheme:dark){.ov-tile{background:var(--win2);box-shadow:0 0 0 .5px var(--sep)}}
 
 .ov-warn{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--orange)}
-.ov-warn.her-off{color:var(--l2)}
-.ov-warn.her-off .link{margin-left:auto}
 .arow .at code{font-size:12px}
 .arow .ai.r{background:var(--red-bg);color:var(--red)}
 .arow .at span.wrap{white-space:normal;line-height:1.5}

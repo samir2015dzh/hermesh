@@ -646,7 +646,6 @@ func (r *replica) follow(s *sources, id string, f *feed, started chan struct{}) 
 		r.machinesChangedLocked(s)
 		r.mu.Unlock()
 		done()
-		r.o.wakeHer() // it answers: messages may wait for it
 	}
 	var err error
 	if f.local {

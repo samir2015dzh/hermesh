@@ -33,7 +33,7 @@
     "sessions": "任务",
     "noneNow": "暂时没有",
     "emptyTitle": "还没有任务",
-    "emptyBody": "交给 Her 一件事，她派给 Agent 的任务会显示在这里。",
+    "emptyBody": "新建一个会话，或让已连接的 Agent 发起，任务会显示在这里。",
     "emptyMachine": "Agent 连接后，发起的任务会显示在这里。",
     "loadingOlder": "正在读取更早的任务…",
     "noOlder": "没有更早的任务了",
@@ -45,10 +45,7 @@
     "disconnectedGrant": "已断开的 Agent",
     "archived": "已归档「{{title}}」",
     "unarchived": "已取消归档「{{title}}」",
-    "her": "Her",
     "overview": "概览",
-    "herUnread_other": "Her 有 {{count}} 条未读",
-    "herOff": "未启用",
     "you": "你",
     "sentBy": "{{name}} 派的",
     "running_other": "{{count}} 个在忙",
@@ -190,14 +187,11 @@
     "sessionsToday": "个任务（今天）",
     "sessionsInDays": "个任务（{{count}} 天内）",
     "workSummary": "已完成 {{done}} · {{turns}} 轮 · {{tokens}} token",
-    "openWork": "打开概览",
-    "herOff": "Her 还没启用",
-    "turnHerOn": "选择她在哪里运行…"
+    "openWork": "打开概览"
   },
   "rail": {
     "label": "窄栏",
     "expand": "展开边栏",
-    "herOff": "Her · 未启用",
     "waiting_other": "{{count}} 个在等你",
     "failed_other": "{{count}} 个出错"
   },
@@ -206,13 +200,6 @@
     "title": "需要更新 Aide",
     "body": "{{machine}} 上的 Aide 版本较旧，还没有这项功能。在那里更新 Aide 后，这里会自动恢复。",
     "text": "那台电脑上的 Aide 版本较旧，还没有这项功能。在那台电脑上更新 Aide 后再试。"
-  },
-  "herUnavailable": {
-    "offTitle": "{{machine}} 上还没开启 Her",
-    "offBody": "这不是版本问题。在 设置 › 机器 里为 {{machine}} 开启 Her，开好后这里会自动显示。",
-    "notRunningTitle": "Her 还没在 {{machine}} 上跑起来",
-    "notRunningBody": "Her 已经开启，但还没在那台电脑上运行，可能正在启动。稍等片刻，这里会自动恢复；一直不行，就在那台电脑上重启 Aide。",
-    "failedBody": "Her 已经开启，但没能在那台电脑上启动：{{error}}。在那台电脑上重启 Aide；还是不行，在 设置 › 机器 里把 Her 关掉再打开。"
   },
   "claude": {
     "title": "Claude 会话",
@@ -234,6 +221,8 @@
     "showArchived": "显示 {{count}} 个已归档",
     "hideArchived": "隐藏已归档",
     "none": "你的机器上没有 DeepSeek Harness 自己的会话。",
+    "localOff": "这台电脑还没有作为机器开启，所以它上面的会话不会出现在这里。开启后可以在「设置 › 机器」里随时关掉。",
+    "localOffTurnOn": "在这台电脑上开启",
     "pick": "选一个会话查看内容。",
     "unreachable": "{{name}} 没有响应。",
     "unreachableLastKnown": "{{name}} 失联：下面是最后一次读到的会话。",

@@ -2,13 +2,11 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type IpcMainEvent, ty
 import path from "node:path";
 import type { Command, MenuItem, MenuState, Preferences, TerminalCommand } from "../shared/bridge";
 import { i18n } from "../shared/i18n";
-import { openComputerPermission } from "./computer";
-import { cancelHerChatGpt, cancelHerConnector, herConsoleURL, herFilesKept, reopenHerChatGpt, reopenHerConnector, readHerFile, saveHerFile, signInHerChatGpt, signInHerConnector } from "./her";
 import { preferences, setPreferences, world } from "./notify";
 import { platform } from "./platform";
 import { errorMessage, takeLinks } from "./links";
 import { catchUp, check, download, install, openUpdates, setAutoDownload, snooze, updateInfo } from "./updater";
-import { mainWindow, ours, setMode, showHerConsole, showMain, showSettings, showWhatsNew, sizeUpdates } from "./windows";
+import { mainWindow, ours, setMode, showMain, showSettings, showWhatsNew, sizeUpdates } from "./windows";
 
 // The page's requests to the main process (see shared/bridge.ts). Each
 // handler checks the request comes from one of our own pages.
@@ -16,7 +14,7 @@ function trusted(e: IpcMainEvent | IpcMainInvokeEvent): boolean {
   return !!e.senderFrame && ours(e.senderFrame.url);
 }
 
-const noMenuState: MenuState = { main: false, her: false, session: null, sidebar: true, undo: false };
+const noMenuState: MenuState = { main: false, session: null, sidebar: true, undo: false };
 let menuState = noMenuState;
 export const currentMenuState = () => menuState;
 export const menuStateListeners = new Set<() => void>();
@@ -131,78 +129,6 @@ export function registerIPC() {
   ipcMain.handle("computer-name", answer(platform.computerName));
   ipcMain.handle("take-links", answer(takeLinks));
 
-  // Her (main/her.ts): a machine's console in its own window, an assistant's file saved to Downloads, and
-  // signing in to ChatGPT, or to a connector a secure card connects, for a machine's Her.
-  const id = (v: unknown) => (typeof v === "string" && v !== "" ? v : null);
-  ipcMain.handle(
-    "her-console",
-    answer((machineId: unknown, page: unknown) => {
-      const m = id(machineId);
-      if (!m) throw new Error("no machine");
-      const name = world.machines.find((x) => x.machineId === m)?.machineName ?? m;
-      // A console page and item by its address's hash, e.g. "browser/connect"; nothing else.
-      const at = typeof page === "string" && /^[a-z]+(\/[a-z]+)?$/.test(page) ? page : undefined;
-      return showHerConsole(m, i18n.t("main:herConsole", { name }), () => herConsoleURL(m), at);
-    }),
-  );
-  ipcMain.handle(
-    "her-save-file",
-    answer((machineId: unknown, botId: unknown, file: unknown, sha: unknown) => {
-      const [m, b, p] = [id(machineId), id(botId), id(file)];
-      if (!m || !b || !p) throw new Error("no file");
-      return saveHerFile(m, b, p, id(sha) ?? undefined);
-    }),
-  );
-  ipcMain.handle(
-    "her-read-file",
-    answer((machineId: unknown, botId: unknown, file: unknown, sha: unknown) => {
-      const [m, b, p] = [id(machineId), id(botId), id(file)];
-      if (!m || !b || !p) throw new Error("no file");
-      return readHerFile(m, b, p, id(sha) ?? undefined);
-    }),
-  );
-  ipcMain.handle(
-    "her-files-kept",
-    answer((machineId: unknown, files: unknown) => {
-      const m = id(machineId);
-      if (!m || !Array.isArray(files)) throw new Error("no files");
-      const pairs = files.flatMap((f) => (Array.isArray(f) && typeof f[0] === "string" && typeof f[1] === "string" ? [[f[0], f[1]] as [string, string]] : []));
-      return herFilesKept(m, pairs);
-    }),
-  );
-  ipcMain.handle(
-    "her-chatgpt",
-    answer((machineId: unknown) => {
-      const m = id(machineId);
-      if (!m) throw new Error("no machine");
-      return signInHerChatGpt(m);
-    }),
-  );
-  ipcMain.on("her-chatgpt-reopen", (e, machineId: unknown) => {
-    const m = id(machineId);
-    if (trusted(e) && m) reopenHerChatGpt(m);
-  });
-  ipcMain.on("her-chatgpt-cancel", (e, machineId: unknown) => {
-    const m = id(machineId);
-    if (trusted(e) && m) cancelHerChatGpt(m);
-  });
-  ipcMain.handle(
-    "her-connector",
-    answer((machineId: unknown, name: unknown) => {
-      const [m, n] = [id(machineId), id(name)];
-      if (!m || !n) throw new Error("no connector");
-      return signInHerConnector(m, n);
-    }),
-  );
-  ipcMain.on("her-connector-reopen", (e, machineId: unknown, name: unknown) => {
-    const [m, n] = [id(machineId), id(name)];
-    if (trusted(e) && m && n) reopenHerConnector(m, n);
-  });
-  ipcMain.on("her-connector-cancel", (e, machineId: unknown, name: unknown) => {
-    const [m, n] = [id(machineId), id(name)];
-    if (trusted(e) && m && n) cancelHerConnector(m, n);
-  });
-
   // Notifications, the menu bar and opening at login (main/notify.ts, main/platform).
   ipcMain.handle("preferences", (e) => (trusted(e) ? preferences() : null));
   ipcMain.handle("set-preferences", (e, p: Partial<Preferences>) => (trusted(e) && typeof p === "object" && p !== null ? setPreferences(p) : null));
@@ -211,8 +137,6 @@ export function registerIPC() {
   ipcMain.handle("daemon-needs-approval", (e) => trusted(e) && platform.daemonNeedsApproval());
   ipcMain.on("open-login-items", (e) => trusted(e) && platform.openLoginItems());
   ipcMain.on("open-activity-monitor", (e) => trusted(e) && platform.openProcessMonitor());
-  // Her's computer use: a permission's pane of System Settings (main/computer.ts).
-  ipcMain.on("open-computer-permission", (e, kind: unknown) => trusted(e) && void openComputerPermission(kind));
   // A folder only, opened by the system's file browser or a terminal there: never a file or an app run.
   ipcMain.on("open-folder", (e, dir: unknown, to: unknown) => {
     if (trusted(e) && (to === "files" || to === "terminal") && typeof dir === "string" && path.isAbsolute(dir)) platform.openFolder(path.normalize(dir), to);

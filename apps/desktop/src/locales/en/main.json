@@ -80,7 +80,5 @@
   },
   "tray": {
     "open": "Open Aide"
-  },
-  "herConsole": "Her Console — {{name}}",
-  "herConsoleBad": "The console’s address isn’t one Aide opens."
+  }
 }

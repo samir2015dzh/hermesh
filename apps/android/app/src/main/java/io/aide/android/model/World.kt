@@ -43,11 +43,11 @@ data class World(
 
     fun machineName(id: String): String = machines.firstOrNull { it.machineId == id }?.machineName ?: id.take(12)
 
-    /** Who sent a session's work, as the person knows them: "You", Her, or the agent's grant name. */
+    /** Who sent a session's work, as the person knows them: "You", or the agent's grant name. */
     fun senderName(s: Session): String {
         val who = when {
             s.createdBy == "owner" -> "You"
-            else -> clients.firstOrNull { it.clientId == s.createdBy }?.let { if (it.herMachineId.isNotEmpty()) "Her" else it.label }
+            else -> clients.firstOrNull { it.clientId == s.createdBy }?.label
                 ?: "Disconnected agent"
         }
         return if (s.createdAs.isNotEmpty() && s.createdAs != who) "$who · ${s.createdAs}" else who

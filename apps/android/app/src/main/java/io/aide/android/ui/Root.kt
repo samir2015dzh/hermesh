@@ -18,7 +18,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -51,7 +50,6 @@ import io.aide.android.model.AppModel
 /** A page over the tabs. */
 sealed interface Route {
     data class Session(val id: String) : Route
-    data class Her(val machineId: String) : Route
     /** DeepSeek Harness's own sessions, and one of them. */
     data object DSH : Route
     data class DSHSession(val entry: io.aide.android.api.DSHSessionEntry) : Route
@@ -61,7 +59,7 @@ sealed interface Route {
     data class EditContact(val persona: io.aide.android.api.Persona) : Route
 }
 
-enum class Tab { Sessions, NeedsYou, Machines, Her, Settings }
+enum class Tab { Sessions, NeedsYou, Machines, Settings }
 
 /** The page shown over the tabs (none: the tabs), and how deep in the stack, so a transition knows forward from back. */
 private data class PageAt(val route: Route?, val depth: Int)
@@ -94,10 +92,7 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
     val opening by model.opening.collectAsState()
     LaunchedEffect(opening) {
         val o = opening ?: return@LaunchedEffect
-        when {
-            o.session.isNotEmpty() -> { stack.clear(); stack.add(Route.Session(o.session)) }
-            o.herMachine.isNotEmpty() -> { stack.clear(); stack.add(Route.Her(o.herMachine)) }
-        }
+        if (o.session.isNotEmpty()) { stack.clear(); stack.add(Route.Session(o.session)) }
         model.opened()
     }
     // A page over the tabs slides in a little from the side and fades, back the other way (Motion, as the desktop's).
@@ -116,7 +111,6 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
     if (top != null) {
         when (top) {
             is Route.Session -> SessionPage(model, top.id, back = { stack.removeAt(stack.lastIndex) })
-            is Route.Her -> HerPage(model, top.machineId, back = { stack.removeAt(stack.lastIndex) })
             Route.DSH -> DSHListPage(model, open = { stack.add(Route.DSHSession(it)) }, back = { stack.removeAt(stack.lastIndex) })
             is Route.DSHSession -> DSHSessionPage(model, top.entry, back = { stack.removeAt(stack.lastIndex) })
             Route.Contacts -> ContactsPage(model, open = { stack.add(Route.Contact(it.personaId)) }, add = { stack.add(Route.EditContact(io.aide.android.api.Persona(icon = "robot", color = io.aide.android.model.personaColors.first()))) }, back = { stack.removeAt(stack.lastIndex) })
@@ -146,7 +140,6 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
                     BadgedBox(badge = { if (needs > 0) Badge(containerColor = Warning, contentColor = androidx.compose.ui.graphics.Color.White) { Text("$needs") } }) { Icon(Icons.Filled.Notifications, null) }
                 }, label = { Text(t("Needs you", "需要你")) })
                 NavigationBarItem(tab == Tab.Machines, { tab = Tab.Machines }, icon = { Icon(Icons.Filled.Home, null) }, label = { Text(t("Machines", "机器")) })
-                NavigationBarItem(tab == Tab.Her, { tab = Tab.Her }, icon = { Icon(Icons.Filled.Face, null) }, label = { Text("Her") })
                 NavigationBarItem(tab == Tab.Settings, { tab = Tab.Settings }, icon = { Icon(Icons.Filled.Settings, null) }, label = { Text(t("Settings", "设置")) })
             }
         },
@@ -157,7 +150,6 @@ private fun Home(model: AppModel, snackbar: SnackbarHostState) {
                     Tab.Sessions -> SessionsTab(model, openDSH = { stack.add(Route.DSH) }) { stack.add(Route.Session(it)) }
                     Tab.NeedsYou -> NeedsYouTab(model) { stack.add(Route.Session(it)) }
                     Tab.Machines -> MachinesTab(model)
-                    Tab.Her -> HerTab(model) { stack.add(Route.Her(it)) }
                     Tab.Settings -> SettingsTab(model)
                 }
             }

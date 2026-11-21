@@ -36,6 +36,8 @@
 .dsh-msg.tool pre.err{color:var(--red)}
 .dsh-msg.end{font-size:12px;color:var(--l2)}
 .dsh-msg.end.err{color:var(--red)}
+.dsh-local-off{margin:0 var(--sp-2) var(--sp-3);padding:var(--sp-3);border:1px solid var(--sep);border-radius:var(--r-lg);font-size:12px;color:var(--l2)}
+.dsh-local-off p{margin:0 0 var(--sp-2)}
 .dsh-empty{color:var(--l2);padding:var(--sp-4)}
 .dsh-empty p{margin:0 0 var(--sp-2)}
 .dsh-home{font-size:12px;overflow-wrap:anywhere}

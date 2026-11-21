@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "../icons";
+import { LocalMachineOff } from "./LocalMachineOff";
 import { ToolRow } from "./ToolRow";
 import { MachineGroupHead, MachineTag, WritesTo } from "../MachineTag";
 import { groupByMachine, showGroups } from "../machineScope";
@@ -86,6 +87,7 @@ export function DSHSessions() {
         <nav className="dsh-list" aria-label={t("dsh.title")}>
           <h1>{t("dsh.title")}</h1>
           <p className="dsh-note">{t("dsh.note")}</p>
+          <LocalMachineOff done={load} />
           {error && <p className="dsh-note warn">{error}</p>}
           {unreachable.map((u) => (
             <p key={u.machineId} className="dsh-note warn">

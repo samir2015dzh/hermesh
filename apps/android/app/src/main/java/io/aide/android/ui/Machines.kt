@@ -95,9 +95,6 @@ private fun MachineCard(model: AppModel, m: Machine) {
                     )
                 }
             }
-            m.her?.takeIf { it.enabled }?.let { h ->
-                Text("Her · " + (if (h.running) t("running", "运行中") else t("not running", "未运行")) + (h.error.takeIf { it.isNotEmpty() }?.let { " · $it" } ?: ""), style = MaterialTheme.typography.bodySmall)
-            }
             if (m.online) TextButton(onClick = { scope.launch { model.recheck(m.machineId) } }) { Text(t("Check agents again", "重新检查 Agent")) }
         }
     }

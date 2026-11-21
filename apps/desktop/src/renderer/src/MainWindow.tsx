@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { parseAppLink } from "@aide/core";
 import { agentName } from "@aide/ui";
@@ -17,9 +17,6 @@ import { Icon } from "./icons";
 import { layoutOf, setSidebar, usePeekEnd } from "./layout";
 import { platform } from "./platform";
 import { errorText, useStore } from "./store";
-
-// Her's page and its client load when it is first shown.
-const HerPage = lazy(() => import("./her/HerPage"));
 
 export function MainWindow() {
   const st = useStore();
@@ -92,10 +89,6 @@ export function MainWindow() {
           <DSHSessions />
         ) : st.selection.kind === "claude" && !st.status?.machineOnly ? (
           <ClaudeSessions />
-        ) : (st.selection.kind === "her" || st.selection.kind === "progress") && !st.status?.machineOnly ? (
-          <Suspense fallback={<div className="ctool drag" />}>
-            <HerPage />
-          </Suspense>
         ) : (
           <Overview />
         )}

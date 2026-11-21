@@ -143,8 +143,6 @@ button{font:inherit;color:inherit}
 .av.xl{width:52px;height:52px;font-size:22px}
 /* A picture the owner gave a grant, drawn like an app's logo. */
 .gpic{flex:none;object-fit:cover;box-shadow:0 0 0 .5px rgba(0,0,0,.1)}
-.gcat{flex:none;display:inline-flex}
-.gcat>svg{width:100%;height:100%}
 .agc{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .agm{width:15px;height:15px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex:none}
 .chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:var(--r-ctl);background:var(--fill);font-size:12px;white-space:nowrap}
@@ -180,9 +178,6 @@ html.vibrant .rail{background:var(--side-tint)}
 .rb.small{height:34px}
 .rb.open{background:var(--fill2)}
 .rb>.ic{width:19px;height:19px}
-.rb-cat{width:26px;height:26px;display:flex}
-.rb-cat>svg{width:100%;height:100%}
-.rb-off{position:absolute;right:7px;bottom:7px;width:8px;height:8px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--l3);background:var(--side)}
 .rb-dot{position:absolute;top:5px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 2px var(--side)}
 .rb-dot.u{background:var(--accent)}
 .rb-dot.r{background:var(--red)}

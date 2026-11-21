@@ -12,7 +12,6 @@ import { local } from "./api";
 import { AppMenuButton } from "./MainWindow";
 import { Icon } from "./icons";
 import { setSidebar } from "./layout";
-import { unreadCount } from "./her/environments";
 import { expiringClients } from "./overview/Attention";
 import { keys, ownKeys } from "./platform";
 import { useNow, useStore, type Store } from "./store";
@@ -23,15 +22,9 @@ export function grantLabel(st: Store, s: Session): string {
   return st.clients.find((c) => c.clientId === s.createdBy)?.label ?? i18n.t("common:sidebar.disconnectedGrant");
 }
 
-/** Her's own grants: the clients that carry her_machine_id. */
-export function herClients(st: Pick<Store, "clients">): string[] {
-  return st.clients.filter((c) => c.herMachineId !== "").map((c) => c.clientId);
-}
-
-/** Who sent work, in a row (docs/her-team.md §4.7): Her by her name alone, the owner as "You", the others as their grants name them. */
+/** Who sent work, in a row: the owner as "You", the others as their grants name them. */
 export function senderName(st: Store, clientId: string): string {
   if (clientId === "owner") return i18n.t("common:sidebar.you");
-  if (herClients(st).includes(clientId)) return "Her";
   return st.clients.find((c) => c.clientId === clientId)?.label ?? i18n.t("common:sidebar.disconnectedGrant");
 }
 
@@ -79,7 +72,7 @@ export function confirmDelete(st: Store, s: Session) {
  */
 export function listSections(st: Pick<Store, "sessions" | "view" | "archived" | "machines" | "clients" | "lastKnown">, now: Date): SessionSection[] {
   const machines = [...st.machines].sort((a, b) => Number(b.local) - Number(a.local) || a.machineName.localeCompare(b.machineName)).map((m) => m.machineId);
-  return sessionSections(st.sessions, st.view, { archived: st.archived, now, machines, her: herClients(st), alwaysActive: true, lastKnown: st.lastKnown });
+  return sessionSections(st.sessions, st.view, { archived: st.archived, now, machines, alwaysActive: true, lastKnown: st.lastKnown });
 }
 
 export function sectionTitle(st: Store, sec: SessionSection): string {
@@ -108,9 +101,8 @@ export function Sidebar() {
           <span className="kbd">{keys("CmdOrCtrl+K")}</span>
         </button>
       </div>
-      {/* Her and the overview, then every session, as the view lays them out (docs/her-team.md §16). */}
+      {/* The overview, then every session, as the view lays them out. */}
       <nav className="side-nav">
-        {!st.status?.machineOnly && <HerItem />}
         <OverviewItem now={now} />
         {!st.status?.machineOnly && hasDSH(st) && (
           <button className={`nav-i ${st.selection.kind === "dsh" ? "sel" : ""}`} onClick={() => st.selection.kind !== "dsh" && st.set({ selection: { kind: "dsh" } })}>
@@ -161,25 +153,6 @@ export function hasDSH(st: { machines: { status?: { agents: { name: string }[] }
 /** Claude Code is on a machine: the Claude desktop app's sessions may be read there. */
 export function hasClaude(st: { machines: { status?: { agents: { name: string }[] } }[] }): boolean {
   return st.machines.some((m) => m.status?.agents.some((a) => a.name === "claude"));
-}
-
-/**
- * The Her entry (docs/her-server.md §9.1): a dot while what its assistants sent the owner is unread, over every
- * environment, as Watch brings each machine's Her; "Off" while she runs nowhere. The page opens Her's connections itself.
- */
-function HerItem() {
-  const st = useStore();
-  const { t } = useTranslation("common");
-  const unread = unreadCount(st.machines);
-  const sel = st.selection.kind === "her" || st.selection.kind === "progress";
-  const on = st.machines.some((m) => m.her?.enabled);
-  return (
-    <button className={`nav-i ${sel ? "sel" : ""}`} onClick={() => st.selection.kind !== "her" && st.set({ selection: { kind: "her" } })}>
-      <Icon name="her" />
-      <span>{t("sidebar.her")}</span>
-      {!on ? <span className="cnt">{t("sidebar.herOff")}</span> : unread > 0 && <span className="nav-marks"><span className="dot-u" role="img" aria-label={t("sidebar.herUnread", { count: unread })} /></span>}
-    </button>
-  );
 }
 
 /** What the overview's marks say: something needs the owner, and how many sessions run. */

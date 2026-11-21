@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, webFrame, webUtils } from "electron";
 import type { Language } from "../shared/i18n";
-import type { Bridge, Command, ComputerPermission, MenuItem, MenuState, Preferences, TerminalCommand, TrayAction, TrayView } from "../shared/bridge";
+import type { Bridge, Command, MenuItem, MenuState, Preferences, TerminalCommand, TrayAction, TrayView } from "../shared/bridge";
 import type { UpdateInfo } from "../shared/update";
 
 // The only things the page gets from outside its sandbox. Data comes from
@@ -29,7 +29,6 @@ const bridge: Bridge = {
   version: arg("version"),
   language: arg("lang") as Language,
   macos: process.platform === "darwin" ? Number.parseInt(process.getSystemVersion(), 10) : 0,
-  openComputerPermission: (kind: ComputerPermission) => ipcRenderer.send("open-computer-permission", kind),
   openSettings: (tab?: string) => ipcRenderer.send("open-settings", tab),
   onSettingsTab: (cb: (tab: string) => void) => listen("settings-tab", cb),
   onWindowFocus: (cb: (focused: boolean) => void) => listen("window-focus", cb),
@@ -49,16 +48,6 @@ const bridge: Bridge = {
       return "";
     }
   },
-  openHerConsole: (machineId: string, page?: string) => ask("her-console", machineId, page),
-  saveHerFile: (machineId: string, botId: string, path: string, sha?: string) => ask("her-save-file", machineId, botId, path, sha),
-  readHerFile: (machineId: string, botId: string, path: string, sha?: string) => ask("her-read-file", machineId, botId, path, sha),
-  herFilesKept: (machineId: string, files: [string, string][]) => ask("her-files-kept", machineId, files),
-  signInHerChatGpt: (machineId: string) => ask("her-chatgpt", machineId),
-  reopenHerChatGpt: (machineId: string) => ipcRenderer.send("her-chatgpt-reopen", machineId),
-  cancelHerChatGpt: (machineId: string) => ipcRenderer.send("her-chatgpt-cancel", machineId),
-  signInHerConnector: (machineId: string, name: string) => ask("her-connector", machineId, name),
-  reopenHerConnector: (machineId: string, name: string) => ipcRenderer.send("her-connector-reopen", machineId, name),
-  cancelHerConnector: (machineId: string, name: string) => ipcRenderer.send("her-connector-cancel", machineId, name),
   runInTerminal: (c: TerminalCommand) => ipcRenderer.send("run-in-terminal", c),
   setWindowMode: (m: "onboarding" | "main") => ipcRenderer.send("window-mode", m),
   computerName: () => ask("computer-name"),

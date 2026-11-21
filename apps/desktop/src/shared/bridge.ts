@@ -1,4 +1,3 @@
-import type { ChatGptSignIn, ConnectorSignIn } from "./herSignin";
 import type { Language, LanguageChoice } from "./i18n";
 import type { UpdateInfo } from "./update";
 
@@ -18,9 +17,7 @@ export type Command =
   /** DeepSeek Harness's own sessions (the settings window's Connect guide). */
   | "dsh"
   /** The Claude desktop app's Claude Code sessions (an Agent page's link). */
-  | "claude"
-  /** The Her entry at an environment: `her:<machine id>` (a notification's). */
-  | `her:${string}`;
+  | "claude";
 
 /**
  * What the menu bar panel shows (main/tray.ts): whether this Mac reaches the
@@ -42,9 +39,6 @@ export type TrayAction = "attention" | "running" | "open" | "settings" | "quit" 
 /** Fixed commands the page may ask to run in Terminal (by key, never by text). */
 export type TerminalCommand = "codexLogin" | "claudeLogin" | "antigravityLogin";
 
-/** A macOS permission Her's computer use needs on this Mac (docs/her-server.md §4.4). */
-export type ComputerPermission = "accessibility" | "screen";
-
 export type Bridge = {
   platform: string;
   /** The window's material shows through the sidebar (macOS's vibrancy, Windows 11's Mica). */
@@ -55,8 +49,6 @@ export type Bridge = {
   language: Language;
   /** macOS's major version, 0 elsewhere: System Settings names its lists by it. */
   macos: number;
-  /** Opens the pane of System Settings where the owner allows a computer use permission (main/computer.ts). */
-  openComputerPermission(kind: ComputerPermission): void;
   /** The settings window, on a tab ("grants"), optionally with an item in it selected ("machines/<machine id>", "grants/<grant id>"). */
   openSettings(tab?: string): void;
   /** In the settings window: another tab was asked for while it is open ("grants", "machines/<id>"). */
@@ -80,26 +72,6 @@ export type Bridge = {
   pickDirectory(): Promise<string | null>;
   /** Where a file given to the page (picked, dropped, pasted) is on this computer; empty for one that is not a file there. */
   pathForFile(file: File): string;
-  /** A machine's Her console, in a window of its own (docs/her-server.md §5.3); at `page`, its address's hash ("browser/connect"). */
-  openHerConsole(machineId: string, page?: string): Promise<void>;
-  /** Saves a file from an assistant's folder on its machine to Downloads, and shows it there; `sha`: a file Her sent, from this computer's copy when it has one. */
-  saveHerFile(machineId: string, botId: string, path: string, sha?: string): Promise<void>;
-  /** A file from an assistant's folder on its machine, read whole to show in the window (a PDF); with `sha`, a file Her sent, kept on this computer by its hash once read (docs/her-deliverables.md §4.5). */
-  readHerFile(machineId: string, botId: string, path: string, sha?: string): Promise<Uint8Array>;
-  /** Which of the files Her sent this computer keeps, by their hash: [hash, name] each. */
-  herFilesKept(machineId: string, files: [string, string][]): Promise<string[]>;
-  /** Signs in to ChatGPT for a machine's Her in the browser (shared/herSignin.ts); resolves once it ended. */
-  signInHerChatGpt(machineId: string): Promise<ChatGptSignIn>;
-  /** Opens the browser again at the sign-in under way for a machine. */
-  reopenHerChatGpt(machineId: string): void;
-  /** Stops the sign-in under way for a machine: it ends cancelled. */
-  cancelHerChatGpt(machineId: string): void;
-  /** Signs in to a connector of a machine's Her in the browser, for a secure card (shared/herSignin.ts); resolves once it ended. */
-  signInHerConnector(machineId: string, name: string): Promise<ConnectorSignIn>;
-  /** Opens the browser again at a connector's sign-in under way. */
-  reopenHerConnector(machineId: string, name: string): void;
-  /** Stops a connector's sign-in under way: it ends cancelled, on her's side too. */
-  cancelHerConnector(machineId: string, name: string): void;
   runInTerminal(c: TerminalCommand): void;
   /** The compact first-run window, or the main window. */
   setWindowMode(mode: "onboarding" | "main"): void;
@@ -169,8 +141,6 @@ export type LoginItem = { on: boolean; needsApproval: boolean };
 
 export type MenuState = {
   main: boolean;
-  /** The Her entry shows. */
-  her: boolean;
   session: null | {
     interruptible: boolean;
     answerable: boolean;

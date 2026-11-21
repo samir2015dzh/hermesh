@@ -34,7 +34,7 @@
     "sessions": "Tasks",
     "noneNow": "None right now",
     "emptyTitle": "No tasks yet",
-    "emptyBody": "Give Her something to do. The tasks she sends to agents show up here.",
+    "emptyBody": "Start a session, or have a connected agent start one. Tasks show up here.",
     "emptyMachine": "When your agents connect, their tasks show up here.",
     "loadingOlder": "Loading earlier tasks…",
     "noOlder": "No earlier tasks",
@@ -46,11 +46,7 @@
     "disconnectedGrant": "Disconnected agent",
     "archived": "Archived “{{title}}”",
     "unarchived": "Unarchived “{{title}}”",
-    "her": "Her",
     "overview": "Overview",
-    "herUnread_one": "{{count}} unread from Her",
-    "herUnread_other": "{{count}} unread from Her",
-    "herOff": "Off",
     "you": "You",
     "sentBy": "Sent by {{name}}",
     "running_one": "{{count}} working",
@@ -199,14 +195,11 @@
     "sessionsToday": "tasks today",
     "sessionsInDays": "tasks in {{count}} days",
     "workSummary": "Done {{done}} · {{turns}} turns · {{tokens}} tokens",
-    "openWork": "Open Overview",
-    "herOff": "Her isn't on",
-    "turnHerOn": "Choose where she runs…"
+    "openWork": "Open Overview"
   },
   "rail": {
     "label": "Sidebar Rail",
     "expand": "Expand Sidebar",
-    "herOff": "Her · Not on",
     "waiting_one": "{{count}} waiting for you",
     "waiting_other": "{{count}} waiting for you",
     "failed_one": "{{count}} failed",
@@ -217,13 +210,6 @@
     "title": "Aide needs an update",
     "body": "Aide on {{machine}} doesn’t have this yet. Update Aide there, and this page loads by itself.",
     "text": "Aide on that computer is older and doesn’t have this yet. Update Aide there, then try again."
-  },
-  "herUnavailable": {
-    "offTitle": "Her isn’t on on {{machine}}",
-    "offBody": "This isn’t about versions. Turn Her on for {{machine}} in Settings › Machines, and this shows by itself.",
-    "notRunningTitle": "Her isn’t running on {{machine}} yet",
-    "notRunningBody": "Her is on, but isn’t running on that computer yet; it may be starting. Give it a moment, and this comes back by itself; if it doesn’t, restart Aide on that computer.",
-    "failedBody": "Her is on, but couldn’t start on that computer: {{error}}. Restart Aide there; if that doesn’t help, turn Her off and on again in Settings › Machines."
   },
   "claude": {
     "title": "Claude sessions",
@@ -246,6 +232,8 @@
     "showArchived_other": "Show {{count}} archived",
     "hideArchived": "Hide archived",
     "none": "No DeepSeek Harness sessions of its own on your machines.",
+    "localOff": "This computer is not turned on as a machine, so its sessions don’t show here. Once on, you can turn it off again in Settings › Machines.",
+    "localOffTurnOn": "Turn On for This Computer",
     "pick": "Choose a session to read it.",
     "unreachable": "{{name}} doesn't answer.",
     "unreachableLastKnown": "{{name}} is lost: its sessions below are as last read.",

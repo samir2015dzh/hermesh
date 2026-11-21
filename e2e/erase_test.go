@@ -27,8 +27,10 @@ func TestEraseEverything(t *testing.T) {
 		t.Skip("e2e")
 	}
 	env := []string{"AIDE_FAKE_PROVIDERS=1"}
-	// Her's homes: the Mac's, where Her is turned on, and the servers', where
-	// she never is (docs/her-server.md §5.6).
+	// Homes of a her on the Mac and on the servers. Aide no longer has Her, so
+	// she was never on on any of these machines: erasing everything must leave
+	// them alone (a machine where she was on once erases hers: the machine
+	// package's TestEraseHer).
 	herMac, herVPS := filepath.Join(t.TempDir(), "her"), filepath.Join(t.TempDir(), "her")
 	for _, d := range []string{herMac, herVPS} {
 		os.MkdirAll(filepath.Join(d, "bots"), 0o700)
@@ -131,11 +133,6 @@ func TestEraseEverything(t *testing.T) {
 		t.Fatalf("preview:\n%s", strings.Join(shown, "\n"))
 	}
 
-	// Her on the Mac's own machine.
-	if _, err := w.app.client.SetHer(ctx, &localv1.SetHerRequest{MachineId: localMachine(t, w.app.client), Enabled: true}); err != nil {
-		t.Fatal(err)
-	}
-
 	// Erase everything, from the Mac: the server signs the order.
 	before := w.signs()
 	erase, err := w.app.client.EraseEverything(ctx, &localv1.EraseEverythingRequest{})
@@ -217,8 +214,8 @@ func TestEraseEverything(t *testing.T) {
 	if _, err := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("listing machines after erasing: %v", err)
 	}
-	if _, err := os.Stat(herMac); !os.IsNotExist(err) {
-		t.Fatalf("Her's data on the Mac after erasing: %v", err)
+	if _, err := os.Stat(herMac); err != nil {
+		t.Fatalf("a her of the Mac's own, where Her was never on: %v", err)
 	}
 	if _, err := os.Stat(herVPS); err != nil {
 		t.Fatalf("a her of the server's own, where Her was never on: %v", err)

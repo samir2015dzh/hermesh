@@ -133,7 +133,7 @@ fun SettingsTab(model: AppModel) {
         val l = login
         if (l != null) AccountDialog(model, c, l, done = { changed -> editing = null; if (changed) version++ })
     }
-    signingOut?.let { d -> SignOutDialog(model, d, world.machines.firstOrNull { it.machineId == d.machineId }?.her?.enabled == true) { signingOut = null } }
+    signingOut?.let { d -> SignOutDialog(model, d, world.machines.firstOrNull { it.machineId == d.machineId }?.her?.let { it.enabled || it.data } == true) { signingOut = null } }
 }
 
 @Composable
@@ -277,7 +277,7 @@ private fun PasswordField(value: String, onChange: (String) -> Unit, label: Stri
 
 /** Signing another device out: it can no longer connect, and its own machine is removed (RemoveDevice). */
 @Composable
-private fun SignOutDialog(model: AppModel, d: Device, herOnItsMachine: Boolean, done: () -> Unit) {
+private fun SignOutDialog(model: AppModel, d: Device, herDataOnItsMachine: Boolean, done: () -> Unit) {
     var eraseHer by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -292,7 +292,8 @@ private fun SignOutDialog(model: AppModel, d: Device, herOnItsMachine: Boolean, 
                         "它将无法再连接" + (if (d.machineId.isNotEmpty()) "，它自己的机器也会被移除" else "") + "。之后它可以用账号和密码重新登录。",
                     ),
                 )
-                if (herOnItsMachine) {
+                // Data Her left there, from before Aide dropped her: it can go with the machine.
+                if (herDataOnItsMachine) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(eraseHer, { eraseHer = it })
                         Text(t("Also erase Her’s data on its machine", "同时清除它机器上 Her 的数据"), style = MaterialTheme.typography.bodyMedium)

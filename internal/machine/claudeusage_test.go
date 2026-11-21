@@ -36,7 +36,7 @@ func (f *fakeUsage) count() int { f.mu.Lock(); defer f.mu.Unlock(); return f.cal
 
 func openTestMachine(t *testing.T) *Machine {
 	t.Helper()
-	n, err := Open(Config{DataDir: t.TempDir(), Providers: map[string]provider.Provider{"claude": &claude.Provider{Binary: "/nonexistent/claude"}}, TestBeforeHer: true})
+	n, err := Open(Config{DataDir: t.TempDir(), Providers: map[string]provider.Provider{"claude": &claude.Provider{Binary: "/nonexistent/claude"}}})
 	if err != nil {
 		t.Fatal(err)
 	}

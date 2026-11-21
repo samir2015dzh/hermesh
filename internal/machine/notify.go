@@ -13,7 +13,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
-	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/internal/provider"
@@ -206,21 +205,6 @@ func (n *Machine) holdQuestion(nt *sessionv1.Notice, s noticeSession, qid string
 		n.notify(nt, s.id, n.fillSessionNotice(nt, s))
 	}
 	time.AfterFunc(questionDelay("AIDE_QUESTION_DESKTOP_GRACE", questionDesktopGrace), check)
-}
-
-// herNotice tells the owner's devices of what Her's newest became
-// (herhost.Config.Notice): her reply, a question, or a secure card waiting
-// for the owner (her kind "approval", the name the apps read for it: Her
-// runs actions without asking, so nothing else waits).
-func (n *Machine) herNotice(l *machinev1.HerLatest) {
-	nt := &sessionv1.Notice{Kind: "her", At: l.At, HerKind: "message", MachineId: n.machineID, BotId: l.BotId, BotName: l.BotName, Text: l.Text}
-	switch l.Kind {
-	case machinev1.HerLatestKind_HER_LATEST_KIND_QUESTION:
-		nt.HerKind = "question"
-	case machinev1.HerLatestKind_HER_LATEST_KIND_APPROVAL:
-		nt.HerKind = "approval"
-	}
-	n.notify(nt, "her:"+l.BotId, func() { nt.Machine = n.Name() })
 }
 
 // notify seals nt to the notice key of each device that asked for its

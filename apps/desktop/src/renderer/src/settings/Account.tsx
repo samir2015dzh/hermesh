@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { Device } from "@aide/proto/local";
 import { platformTitle } from "@aide/core";
 import { local } from "../api";
-import { herDataKept } from "../her/environments";
+import { herDataLeft } from "../herLegacy";
 import { Icon } from "../icons";
 import { errorText, useStore } from "../store";
 import { copy, More, SRow, type Ask } from "./common";
@@ -24,7 +24,7 @@ export function Account({ ask }: { ask: (a: Ask) => void }) {
   const host = URL.canParse(relay) ? new URL(relay).host : relay;
   const account = s?.account ?? "";
   const removeDevice = (d: Device) => {
-    // Its own machine goes with it, and Her's data there can go too (docs/her-server.md §5.6).
+    // Its own machine goes with it, and data Her left there, from before Aide dropped her, can go too.
     const m = st.machines.find((x) => x.machineId === d.machineId);
     st.set({
       sheet: {
@@ -34,7 +34,7 @@ export function Account({ ask }: { ask: (a: Ask) => void }) {
         button: t("removeButton"),
         run: (eraseHer) => local.removeDevice({ keyId: d.keyId, eraseHer }),
         done: t("removed", { name: d.label }),
-        herData: m && (m.her?.enabled || herDataKept(m)) ? { name: m.machineName, offline: !m.online } : undefined,
+        herData: m && herDataLeft(m) ? { name: m.machineName, offline: !m.online } : undefined,
       },
     });
   };

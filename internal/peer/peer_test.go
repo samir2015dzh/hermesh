@@ -112,7 +112,7 @@ func TestMachineHer(t *testing.T) {
 	}
 	defer h2.Close()
 	n := newMachine("m_1", "box", h2)
-	res, err := n.Her.Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "models/list"}})
+	res, err := echoOf(n).Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "models/list"}})
 	if err != nil || string(res.Response.Result) != `"models/list"` {
 		t.Fatalf("Her.Call: %v %v", res, err)
 	}
@@ -175,7 +175,7 @@ func TestLink(t *testing.T) {
 	if err != nil || n.Name != "box" {
 		t.Fatalf("machine: %+v %v", n, err)
 	}
-	if res, err := n.Her.Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "models/list"}}); err != nil || string(res.Response.Result) != `"models/list"` {
+	if res, err := echoOf(n).Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "models/list"}}); err != nil || string(res.Response.Result) != `"models/list"` {
 		t.Fatalf("a call to the machine: %v %v", res, err)
 	}
 	if again, _ := c.Machine(ctx, "m_1"); again != n {
@@ -246,4 +246,11 @@ func TestLocalMachineNotHere(t *testing.T) {
 	if err := c.Ping(ctx); err != nil {
 		t.Fatalf("the relay connection the machine needed: %v", err)
 	}
+}
+
+// echoOf is a unary call over n's tunnel for these tests to make: the
+// generated client of HerService, which the machines here serve as herCalls
+// (it answers with the method's name). Nothing else in Aide calls it now.
+func echoOf(n *Machine) herv1connect.HerServiceClient {
+	return herv1connect.NewHerServiceClient(n.h2, "https://machine", transport.ClientNoCompression)
 }

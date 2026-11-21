@@ -59,7 +59,7 @@ class LiveNoticesReplayTest {
         val withdrawn = steps.flatMap { it.withdrawn }
 
         // Only the kinds this phone asks for: no request to connect, which no longer exists.
-        assertTrue(shown.all { it.kind in listOf("session_started", "question", "failure", "her") })
+        assertTrue(shown.all { it.kind in listOf("session_started", "question", "failure") })
         assertTrue(withdrawn.none { it == "pairing" })
 
         // Muse's three sessions are news; the owner's own is not.

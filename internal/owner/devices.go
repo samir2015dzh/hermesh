@@ -166,7 +166,7 @@ func (o *Owner) RemoveDevice(ctx context.Context, keyID string, eraseHer bool) (
 		}
 		res, err := n.Admin.ApplyAdminCommand(ctx, &machinev1.ApplyAdminCommandRequest{Command: signed[0]})
 		if err == nil {
-			err = o.herTurnedOff(ctx, own, true, res.GetMessage())
+			err = herErased(res.GetMessage())
 		}
 		if err != nil {
 			return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("Her's data stays on its machine, so the device stays: %w", err))

@@ -363,12 +363,6 @@ func (n *Machine) applyAdmin(ctx context.Context, cmd *identityv1.AdminCommand, 
 }
 
 func (n *Machine) execAdmin(ctx context.Context, cmd *identityv1.AdminCommand) (string, error) {
-	switch cmd.Command.(type) {
-	case *identityv1.AdminCommand_SetHer, *identityv1.AdminCommand_SetHerCommandConnector:
-		if n.cfg.TestBeforeHer {
-			return "", connect.NewError(connect.CodeInvalidArgument, errors.New("unknown admin command")) // as 0.1.4 answered
-		}
-	}
 	switch c := cmd.Command.(type) {
 	case *identityv1.AdminCommand_AddProject:
 		p := c.AddProject
@@ -449,8 +443,6 @@ func (n *Machine) execAdmin(ctx context.Context, cmd *identityv1.AdminCommand) (
 		return n.setWorkspaceRoots(c.SetWorkspaceRoots.Roots)
 	case *identityv1.AdminCommand_SetHer:
 		return n.setHer(c.SetHer.Enabled, c.SetHer.Erase)
-	case *identityv1.AdminCommand_SetHerCommandConnector:
-		return n.execHer(ctx, cmd)
 	}
 	return "", errUnknownAdmin
 }

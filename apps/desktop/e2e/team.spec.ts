@@ -4,36 +4,29 @@ import os from "node:os";
 import path from "node:path";
 import { launch, snap, sessionList, navTo } from "./app";
 
-// Her and her team on the Mac (docs/her-team.md §14), on the fixture's world: this Mac with sessions in every
-// state, all sent by the agent "bot", and Her on nowhere.
+// The owner's agents at work, on the fixture's world: this Mac with sessions in every state, all sent by the
+// agent "bot".
 
-test("the window opens on Her's first run while she runs nowhere; Not Now makes the overview the start page, which brings her first run back", async () => {
+test("the window opens on the overview, and again the next time", async () => {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "hmdesk-"));
   let { app, page } = await launch(undefined, { profile, start: true });
-  const firstRun = () => page.getByRole("heading", { name: "选择 Her 在哪里运行" });
   const work = () => page.getByRole("heading", { name: "概览", level: 1 });
-  await expect(firstRun()).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator(".side-nav").getByRole("button", { name: /^Her/ })).toContainText("未启用");
-  await page.getByRole("button", { name: "以后再说" }).click();
-  await expect(work()).toBeVisible();
-  await expect(page.getByRole("status").filter({ hasText: "Her 还没启用" })).toBeVisible();
-  await app.close();
-
-  // Next time, the overview: Not Now is kept on this Mac.
-  ({ app, page } = await launch(undefined, { profile, start: true }));
-  // The start page is picked once the owner's world is in: its sessions are counted, and it is still the overview.
+  // The start page is picked once the owner's world is in: its sessions are counted.
   await expect(page.getByRole("region", { name: "需要你处理" })).toContainText("选颜色", { timeout: 30_000 });
   await expect(work()).toBeVisible();
-  await page.getByRole("button", { name: "选择她在哪里运行…" }).click();
-  await expect(firstRun()).toBeVisible();
+  await app.close();
+
+  ({ app, page } = await launch(undefined, { profile, start: true }));
+  await expect(page.getByRole("region", { name: "需要你处理" })).toContainText("选颜色", { timeout: 30_000 });
+  await expect(work()).toBeVisible();
   await app.close();
 });
 
-test("the sidebar is Her, the overview and every session; collapsed, its rail shows the agents at work, each a menu of its sessions", async () => {
+test("the sidebar is the overview and every session; collapsed, its rail shows the agents at work, each a menu of its sessions", async () => {
   const { app, page } = await launch();
   await page.setViewportSize({ width: 1240, height: 800 });
   const sidebar = page.getByRole("complementary", { name: "边栏" });
-  await expect(page.locator(".side-nav .nav-i")).toHaveText([/^Her/, /^概览/, "连接 Agent"]);
+  await expect(page.locator(".side-nav .nav-i")).toHaveText([/^概览/, "连接 Agent"]);
   // The overview's row: a dot while something waits on the owner, and a ring while anything runs; no numbers.
   const overview = page.locator(".side-nav").getByRole("button", { name: /^概览/ });
   await expect(overview.getByRole("img", { name: /项需要处理/ })).toBeVisible();
@@ -53,11 +46,10 @@ test("the sidebar is Her, the overview and every session; collapsed, its rail sh
   await expect(page.locator(".slist")).toHaveCount(0);
   await snap(page, "sidebar-session");
 
-  // Collapsed, the sidebar is its rail, and stays so from page to page: Her, the overview, then one logo for each
+  // Collapsed, the sidebar is its rail, and stays so from page to page: the overview, then one logo for each
   // coding agent with sessions at hand, saying on hover how they stand.
   await page.getByRole("button", { name: "收成窄栏" }).click();
   const rail = page.getByRole("complementary", { name: "窄栏" });
-  await expect(rail.getByRole("button", { name: /^Her/ })).toBeVisible();
   await expect(rail.getByRole("button", { name: /^概览/ })).toBeVisible();
   const gemini = rail.getByRole("button", { name: /^Gemini CLI · \d+ 个在等你 · \d+ 个出错 · \d+ 个在忙$/ });
   await gemini.hover();

@@ -138,11 +138,6 @@ func (l *Local) RevokedGrants() []string {
 	return slices.Clone(l.n.revocations.GetRevokedGrantIds())
 }
 
-// SetHerGrant gives this machine's Her her grant (docs/her-mesh.md §3.3).
-func (l *Local) SetHerGrant(signed *identityv1.Signed, chain *identityv1.RootChain) error {
-	return l.n.SetHerGrant(signed, chain)
-}
-
 // ListProjects lists the projects, without their base branches (which the
 // owner's screens do not show, and which cost a git call each).
 func (l *Local) ListProjects(ctx context.Context) (*machinev1.ListProjectsResponse, error) {

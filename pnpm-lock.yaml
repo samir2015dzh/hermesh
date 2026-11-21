@@ -25,12 +25,6 @@ importers:
       '@aide/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@aide/her-client':
-        specifier: workspace:*
-        version: link:../../packages/her-client
-      '@aide/her-protocol':
-        specifier: workspace:*
-        version: link:../../packages/her-protocol
       '@aide/proto':
         specifier: workspace:*
         version: link:../../packages/proto

@@ -70,7 +70,8 @@ class WorldTest {
         assertEquals(listOf("i"), b.recent.map { it.sessionId })
         assertEquals("Muse", w.senderName(asking))
         assertEquals("Muse · reviewer", w.senderName(asking.copy(createdAs = "reviewer")))
-        assertEquals("Her", w.senderName(asking.copy(createdBy = "c_her")))
+        // A grant Her held, from before Aide dropped her: named as its grant is.
+        assertEquals("her", w.senderName(asking.copy(createdBy = "c_her")))
         assertEquals("You", w.senderName(asking.copy(createdBy = "owner")))
         assertEquals("Disconnected agent", w.senderName(asking.copy(createdBy = "c_gone")))
     }

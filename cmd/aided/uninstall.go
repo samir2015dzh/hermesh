@@ -19,6 +19,7 @@ import (
 
 	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 	"github.com/samir2015dzh/aide/gen/go/aide/local/v1/localv1connect"
+	"github.com/samir2015dzh/aide/internal/brandenv"
 	"github.com/samir2015dzh/aide/internal/localipc"
 	"github.com/samir2015dzh/aide/internal/machine"
 	"github.com/samir2015dzh/aide/internal/paths"
@@ -223,8 +224,10 @@ func uninstall(ctx context.Context, w io.Writer, ask func(string) (string, error
 	if err := os.RemoveAll(cliHome); err != nil {
 		return err
 	}
-	// The browsers here would go on starting a her that is gone.
-	if her := filepath.Join(filepath.Dir(bin), "her"); herExtensionHost() && exists(her) {
+	// A her left from before Aide dropped her: the browsers here would go on
+	// starting it for the Aide extension once it is gone. Never one
+	// $AIDE_HER_BIN names (tests and development), which has a home of its own.
+	if her := filepath.Join(filepath.Dir(bin), "her"); brandenv.Get("HER_BIN") == "" && exists(her) {
 		exec.CommandContext(ctx, her, "browser", "extension", "uninstall").Run()
 	}
 	for _, p := range programs {

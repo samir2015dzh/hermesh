@@ -47,6 +47,7 @@
     "mac": "**On a Mac**, to manage your machines and tasks and run coding agents: `Aide-macos-arm64.dmg` (Apple silicon) or `Aide-macos-x64.dmg` (Intel)",
     "windows": "**On a Windows 11 PC**, to manage your machines and tasks and run coding agents: `Aide-windows-x64-setup.exe`, or `Aide-windows-arm64-setup.exe` on Arm. The installer isn't signed yet, so Windows will warn once; click More info › Run anyway to install",
     "machine": "**On a machine for coding agents** (Linux or macOS): `{{command}}`",
+    "device": "**On an Android phone**, to follow your machines and tasks and answer your agents: the `.apk` file of this release. It doesn't come from a store, so Android asks you to allow installing it",
     "cli": "**For your agent's CLI**: the same command, ending with `sh -s -- --cli`",
     "relay": "**On your own server**: the image `{{image}}`",
     "note": "The remaining files are used by the installer and automatic updates; you don't need to download them manually."

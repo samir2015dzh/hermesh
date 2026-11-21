@@ -5,14 +5,11 @@ import type { Machine } from "@aide/proto/local";
 import { SessionStatus } from "@aide/proto/session";
 import { agoText, dateOf, isActive, platformTitle } from "@aide/core";
 import { Mark } from "@aide/ui";
-import { i18n } from "../../../shared/i18n";
 import { AgentList, AgentPage, sortAgents } from "../AgentList";
 import { useCheckAgents } from "../agents";
 import { local } from "../api";
-import { ComputerUse } from "../her-computer/ComputerUse";
 import { Problems } from "../health";
-import { herDataKept } from "../her/environments";
-import { GrantLine } from "../her/GrantLine";
+import { herDataLeft } from "../herLegacy";
 import { Icon } from "../icons";
 import { useNow, useStore, type Store } from "../store";
 import { GoRow, SRow, Switch, type Ask } from "./common";
@@ -106,57 +103,6 @@ function ShareRow() {
   );
 }
 
-/**
- * Her on a machine (docs/her-server.md §11, phase 1): turned on with Touch ID (SetHer); turned off on a
- * sheet that asks whether her data goes too (§5.6). Windows can't run her yet. Turning her on also lets
- * her use the owner's computers (docs/her-mesh.md §3.3), and says so first.
- */
-function HerRow({ m }: { m: Machine }) {
-  const { t } = useTranslation("settings");
-  const st = useStore();
-  // The switch's new state while aided and the signer work on it.
-  const [pending, setPending] = useState<boolean | null>(null);
-  const on = pending ?? m.her?.enabled ?? false;
-  // What it says of Her while it answers (Machine.her is kept only once Her was on there); none in its status:
-  // its Aide is from before Her (docs/version-skew.md §6.7).
-  const beforeHer = !!m.status && !m.status.her;
-  const unsupported = beforeHer ? "" : ((m.status ? m.status.her?.unsupported : m.her?.unsupported) ?? "");
-  // A PC whose Aide is from before her ran on Windows.
-  const windows = unsupported === "windows";
-  const set = async (v: boolean) => {
-    if (!v) return st.set({ sheet: { kind: "herOff", machineId: m.machineId, machineName: m.machineName } });
-    setPending(v);
-    await st.run(() => local.setHer({ machineId: m.machineId, enabled: v }));
-    setPending(null);
-  };
-  const eraseData = () =>
-    st.set({
-      sheet: {
-        kind: "confirm",
-        title: t("machines.herEraseTitle", { name: m.machineName }),
-        message: t("machines.herEraseMessage", { name: m.machineName }),
-        button: t("machines.herEraseButton"),
-        run: () => local.setHer({ machineId: m.machineId, enabled: false, erase: true }),
-        done: t("machines.herErased", { name: m.machineName }),
-      },
-    });
-  const desc = beforeHer ? t("machines.herNeedsUpdate") : windows ? t("machines.herWindows") : unsupported ? t("machines.herUnsupported", { reason: unsupported }) : m.her?.enabled ? t("machines.herDesc") : <>{i18n.t("her:grant.runs")}<br />{i18n.t("her:grant.desc")}</>;
-  return (
-    <>
-      <SRow title={t("machines.herRun")} desc={desc}>
-        <Switch on={on} label={t("machines.herRun")} set={set} disabled={pending !== null || (!on && (beforeHer || windows || unsupported !== "")) || (!m.online && !m.local)} />
-      </SRow>
-      {/* Off, her data kept (docs/her-server.md §5.6): erased while the machine answers. */}
-      {!on && herDataKept(m) && (
-        <div className="frow">
-          <span style={{ flex: 1 }}>{t("machines.herKept")}</span>
-          {(m.online || m.local) && <button className="btn sm" onClick={eraseData}>{t("machines.herErase")}</button>}
-        </div>
-      )}
-    </>
-  );
-}
-
 /** A machine name as aided's machine.CleanName makes it: lowercase letters, digits and -, at most 63 bytes; "" when nothing is left. */
 export function cleanName(s: string): string {
   let n = s.trim().toLowerCase();
@@ -204,8 +150,8 @@ function MachineDetail({ m, ask, open }: { m: Machine; ask: (a: Ask) => void; op
         button: t("removeButton"),
         run: (eraseHer) => local.removeMachine({ machineId: m.machineId, eraseHer }),
         done: t("removed", { name: m.machineName }),
-        // Her's data there can go too, while the machine answers (docs/her-server.md §5.6).
-        herData: m.her?.enabled || herDataKept(m) ? { name: m.machineName, offline: !m.online } : undefined,
+        // Data Her left there, from before Aide dropped her, can go too while the machine answers.
+        herData: herDataLeft(m) ? { name: m.machineName, offline: !m.online } : undefined,
       },
     });
   const copyDiagnostics = () =>
@@ -276,18 +222,6 @@ function MachineDetail({ m, ask, open }: { m: Machine; ask: (a: Ask) => void; op
           </div>
         </div>
       </div>
-      {/* Turning Her on is signed with the root key, which a machine only does not hold. */}
-      {!st.status?.machineOnly && (
-        <div>
-          <div className="fhead">{t("machines.her")}</div>
-          <div className="fgroup">
-            <HerRow m={m} />
-          </div>
-          <GrantLine m={m} />
-        </div>
-      )}
-      {/* What macOS lets Her's desktop tools do here: the Mac's permissions (macOS checks aided), not an assistant's. */}
-      {m.local && m.her?.enabled && <ComputerUse machineId={m.machineId} />}
       <div className="set-acts">
         <button className="btn" onClick={rename}>{t("machines.rename")}</button>
         {/* What to send when something doesn't work; only this Mac's is at hand. */}

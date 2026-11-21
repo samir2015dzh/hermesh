@@ -3,8 +3,6 @@ import { useTranslation } from "react-i18next";
 import { SessionStatus, type Session } from "@aide/proto/session";
 import { codingAgentTitle, displayTitle, isActive, isFailed, liveByAgent, teamState } from "@aide/core";
 import { AgentLogo } from "@aide/ui";
-import { Cat } from "./her/Cat";
-import { unreadCount } from "./her/environments";
 import { Icon } from "./icons";
 import { setSidebar } from "./layout";
 import { AppMenuButton } from "./MainWindow";
@@ -37,8 +35,6 @@ export function Rail() {
   const sel = st.selection;
   const chosen = sel.kind === "session" ? sel.id : "";
   const owner = !st.status?.machineOnly;
-  const unread = unreadCount(st.machines);
-  const herOn = st.machines.some((m) => m.her?.enabled);
   const marks = overviewMarks(st, now);
   const groups = useMemo(() => liveByAgent(teamState(st.sessions, 0)), [st.sessions]);
   const button = (o: { label: string; current: boolean; onClick: (e: MouseEvent<HTMLButtonElement>) => void; small?: boolean; open?: boolean; children: ReactNode; marks?: ReactNode }) => (
@@ -62,7 +58,6 @@ export function Rail() {
     const running = list.filter(isActive).length;
     return [waiting ? t("rail.waiting", { count: waiting }) : "", failed ? t("rail.failed", { count: failed }) : "", running ? t("sidebar.running", { count: running }) : ""].filter(Boolean);
   };
-  const herLabel = !herOn ? t("rail.herOff") : unread > 0 ? t("sidebar.herUnread", { count: unread }) : "Her";
   const overviewLabel = [t("sidebar.overview"), marks.waits ? t("sidebar.attention", { count: marks.waits }) : "", marks.running ? t("sidebar.running", { count: marks.running }) : ""].filter(Boolean).join(" · ");
   const open = menu && groups.find((g) => g.agent === menu.agent);
   return (
@@ -71,14 +66,6 @@ export function Rail() {
         <AppMenuButton />
       </div>
       <nav className="rail-nav" onScroll={() => (setTip(null), setMenu(null))}>
-        {owner &&
-          button({
-            label: herLabel,
-            current: sel.kind === "her" || sel.kind === "progress",
-            onClick: () => sel.kind !== "her" && st.set({ selection: { kind: "her" } }),
-            children: <span className="rb-cat" aria-hidden="true"><Cat small /></span>,
-            marks: herOn ? unread > 0 && <i className="rb-dot u" aria-hidden="true" /> : <span className="rb-off" aria-hidden="true" />,
-          })}
         {button({
           label: overviewLabel,
           current: sel.kind === "overview",

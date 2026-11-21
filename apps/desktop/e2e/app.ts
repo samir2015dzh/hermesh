@@ -17,24 +17,8 @@ export type Fixture = {
   fresh: { socket: string; relayURL: string; claimCode: string; gate?: string }[];
   /** A second Mac's daemon (its process group), a machine only with a session on it; 0 when none. */
   otherMac: number;
-  /** A connector's service that signs in with OAuth, for Her to ask for on a secure card (TestDesktopHer). */
-  connector?: string;
-  /** This Mac's her home, to change a file Her sent as her model would (TestDesktopHerDeliveries). */
-  herHome?: string;
-  /** her's ChatGPT fixture, standing in for OpenAI (TestDesktopHerChatGPT). */
-  chatgpt?: string;
-  /** The file of the methods this Mac's her acts as if it lacked, read when her starts (TestDesktopHerOlder). */
-  herWithout?: string;
-  /** The her program this Mac runs, for the spec to restart it as an update does (TestDesktopHerOlder). */
-  herBin?: string;
   /** Where git on this Mac finds github.com: owner/name is <github>/owner/name.git. */
   github: string;
-  /**
-   * old-box, a machine from before Her (TestDesktopHerBeforeHer): the file that says so while it holds 1, and the
-   * start of its aided's command line, for the spec to stop it so that it starts again as it is now.
-   */
-  beforeHer?: string;
-  beforeHerDaemon?: string;
   /** The dsh spec: the stand-in DSH Host running the Aide bridge plugin (0 when none). */
   dshHost?: number;
   /** Its DSH home. */

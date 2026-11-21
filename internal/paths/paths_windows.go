@@ -36,10 +36,6 @@ func Control(dataDir string) string { return filepath.Join(dataDir, "run", "cont
 // Tools is where the sessions of the machine machineID reach their tools.
 func Tools(dataDir, machineID string) string { return filepath.Join(dataDir, "run", "tools.pipe") }
 
-// Her is where the machine with this data directory reaches her
-// (docs/her-server.md): the file that names her's pipe, which her writes.
-func Her(dataDir string) string { return filepath.Join(dataDir, "her", "her.sock") }
-
 // Link is where the CLI with this home keeps its relay connection between
 // commands (the CLI's link, docs/cli.md).
 func Link(cliHome string) string { return filepath.Join(cliHome, "link", "link.pipe") }

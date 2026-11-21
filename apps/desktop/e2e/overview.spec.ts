@@ -161,8 +161,14 @@ test("用量 shows a year of tokens with today's turns", async () => {
   await expect(usage.getByRole("img", { name: /^近一年 \d+(\.\d)?[KM]? tokens，1 天有用量$/ })).toBeVisible();
   await expect(usage).toContainText("Gemini 100%");
   await expect(usage).toContainText("连续使用1 天");
-  await usage.locator(".u-cells .today").hover();
-  await expect(usage).toContainText(/\d+ tokens · \d+ 个任务/);
+  // The tip is up while the pointer is on the cell. 用量 is the page's last section, under lists that grow and
+  // shrink as the fixture's sessions go on: when one does, the cell moves from under a pointer that stays where
+  // it is, and the tip goes with it. So the pointer is put on the cell again until the tip is read.
+  await expect(async () => {
+    await page.mouse.move(0, 0);
+    await usage.locator(".u-cells .today").hover();
+    await expect(usage).toContainText(/\d+ tokens · \d+ 个任务/, { timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
   await snap(page, "overview-usage");
   await app.close();
 });

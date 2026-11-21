@@ -1,6 +1,6 @@
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
-import { applyWatch, emptyWorld, filterNotices, herNotices, herSnapshots, noticeDiff, noticeSnapshots, pendingQuestion, questionAcks, withKnownState, type HerSnapshot, type NoticeSnapshot } from "@aide/core";
+import { applyWatch, emptyWorld, filterNotices, noticeDiff, noticeSnapshots, pendingQuestion, questionAcks, withKnownState, type NoticeSnapshot } from "@aide/core";
 import { LocalService, type Client, type GetStatusResponse, type Machine } from "@aide/proto/local";
 import type { Session } from "@aide/proto/session";
 import { app, nativeTheme, Notification, powerMonitor } from "electron";
@@ -140,26 +140,6 @@ function ackQuestions() {
   for (const a of questionAcks(world.sessions, told, ownerPresent())) local.markSessionSeen(a).catch((e) => console.warn("telling of a question:", e));
 }
 
-// What Her's assistants send (docs/her-server.md §9.3), from each machine's
-// Her as Watch brings it: notified while the main window is not in front,
-// unless the assistant is muted, and clicked, opening the Her entry at it.
-// An environment whose messages were all read, here or on another device,
-// takes its notifications back. Nothing before the first look is news.
-let herSeen: Map<string, HerSnapshot> | undefined;
-
-function noticeHer() {
-  if (herSeen) {
-    const looking = mainWindow()?.isFocused() ?? false;
-    for (const n of herNotices(herSeen, world.machines)) {
-      if (!looking) post(`her-${n.machineId}-${n.botId}`, n.title, n.body, `her:${n.machineId}`);
-    }
-    for (const m of world.machines) {
-      if (m.her?.enabled && m.her.unread === 0) for (const p of posted.filter((x) => x.id.startsWith(`her-${m.machineId}-`))) withdraw(p.id);
-    }
-  }
-  herSeen = herSnapshots(world.machines);
-}
-
 // --- Following aided ---
 
 export function watch() {
@@ -184,7 +164,6 @@ export function watch() {
           world.machines = w.machines;
           world.sessions = withKnownState(w.sessions, w.machines);
           if (w.sessions !== before.sessions || w.machines !== before.machines) noticeSessions();
-          if (w.machines !== before.machines) noticeHer();
           if (w !== before) changed();
         }
       } catch (e) {

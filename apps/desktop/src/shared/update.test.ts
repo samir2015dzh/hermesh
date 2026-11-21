@@ -119,4 +119,21 @@ test("a version is released only with its own highlights in both languages", () 
     { command: "curl x | sh", image: "relay:v0.2.0" });
   assert.ok(withGuide.startsWith("### Install\n\n- Mac\n- PC\n- Run `curl x | sh`\n- Device\n- CLI\n- Image relay:v0.2.0\n\nRest.\n\n### Improvements"), withGuide);
   assert.match(withGuide, /---\n\n### 安装\n\n- Mac\n- PC\n- 运行 `curl x \| sh`[\s\S]*其余。\n\n### 改进/);
+
+  // A guide that lacks a line stops the release, naming the catalog and the line (the text would be written from it).
+  const headings = { en: { improvements: "Improvements", fixes: "Fixes", install: guide }, "zh-CN": { improvements: "改进", fixes: "修复", install: zhGuide } };
+  assert.equal(releaseNotesProblem(en, zh, "0.2.0", headings), "");
+  const { device: _device, ...noDevice } = zhGuide;
+  const lacking = { ...headings, "zh-CN": { ...headings["zh-CN"], install: noDevice as typeof zhGuide } };
+  assert.equal(releaseNotesProblem(en, zh, "0.2.0", lacking), 'zh-CN/updates.json: "install" lacks "device"');
+  assert.equal(releaseNotesProblem(en, zh, "0.2.0", { ...headings, en: { ...headings.en, install: { ...guide, cli: " ", note: "" } } }), 'en/updates.json: "install" lacks "cli", "note"');
+  assert.match(releaseNotesProblem(en, zh, "0.2.0", { ...headings, en: { improvements: "Improvements", fixes: "Fixes" } }), /en\/updates.json has no "install"/);
+});
+
+// The app's own catalogs: the guide of each language has every line.
+test("the catalogs' install guides are whole", async () => {
+  const enUpdates = (await import("../locales/en/updates.json", { with: { type: "json" } })).default;
+  const zhUpdates = (await import("../locales/zh-CN/updates.json", { with: { type: "json" } })).default;
+  const notes = { "0.0.1": { improvements: ["x"], fixes: [] } };
+  assert.equal(releaseNotesProblem(notes, notes, "0.0.1", { en: enUpdates, "zh-CN": zhUpdates }), "");
 });

@@ -28,15 +28,12 @@ import (
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/internal/flock"
-	"github.com/samir2015dzh/aide/internal/herhost"
 	"github.com/samir2015dzh/aide/internal/legacy"
-	"github.com/samir2015dzh/aide/internal/paths"
 	"github.com/samir2015dzh/aide/internal/provider"
 	"github.com/samir2015dzh/aide/internal/provider/acp"
 	"github.com/samir2015dzh/aide/internal/provider/claude"
 	"github.com/samir2015dzh/aide/internal/provider/codex"
 	"github.com/samir2015dzh/aide/internal/resident"
-	"github.com/samir2015dzh/aide/internal/shellenv"
 	"github.com/samir2015dzh/aide/pkg/identity"
 	"github.com/samir2015dzh/aide/pkg/transport"
 )
@@ -55,25 +52,11 @@ type Config struct {
 	// SelfErase: a machine on its own (not a trusted device's) stops with
 	// ErrErased when its owner erased everything, to be erased (Erase).
 	SelfErase bool
-	// HerBin is the her program (docs/her-server.md), "" when this machine
-	// has none; HerConsole is the folder of her's console.
-	HerBin, HerConsole string
-	// HerExtensionHost: while Her is on, the browsers here start her for the
-	// Aide extension, which lends her the owner's own Chrome.
-	HerExtensionHost bool
-	// NewHerLink makes Her's link to the mesh (internal/herlink, which is
-	// above this package); nil: Her has no mesh tools.
-	NewHerLink func(HerLinkConfig) HerLink
 	// ClaudeUsage turns on reading the Claude plan usage on this machine
 	// (claudeusage.go): the account's OAuth token is read locally to fetch
 	// the five-hour and weekly windows, with auto-renew. Off by default so
 	// tests make no network calls; aided turns it on.
 	ClaudeUsage bool
-	// TestBeforeHer makes this machine act as an aided from before Her
-	// (before 0.1.5), for the end-to-end tests of an app newer than its
-	// machine (docs/version-skew.md §6.7): its status carries no Her, and
-	// Her's admin commands are unknown, answered as that version did.
-	TestBeforeHer bool
 }
 
 func DefaultProviders() map[string]provider.Provider {
@@ -157,13 +140,9 @@ type Machine struct {
 	tools sessionTools
 	// wsReqs are the managed workspaces' requests (workspacereq.go).
 	wsReqs workspaceRequests
-	// her runs her while Her is on (her.go); herOn is the owner's setting.
-	her   *herhost.Host
-	herOn bool
-	// herData: Her was on here once and her home is still there (HerStatus.data).
+	// herData: Her was on here once, before Aide dropped her, and her home is
+	// still there (HerStatus.data; herlegacy.go).
 	herData bool
-	// mesh is Her as one of the owner's agents (her_mesh.go).
-	mesh herOnMesh
 	// directPort is the ephemeral TCP port of serveDirect when listening.
 	directPort atomic.Int32
 	// offers are what ACP agents' sessions offered (defaults.go).
@@ -245,9 +224,6 @@ func Open(cfg Config) (*Machine, error) {
 	n := &Machine{cfg: cfg, log: cfg.Logger, st: st, key: key, lock: lock, inboxWake: make(chan struct{}, 1), machineID: identity.MachineID(identity.MarshalPublicKey(key.Public())),
 		infos: map[string]provider.Info{}, hidden: map[string]hiddenAgent{}, offers: map[string]provider.Offers{}, defaults: map[string]*identityv1.AgentDefaults{}, tunnels: map[*tunnel]struct{}{}, adminSeen: map[string]time.Time{}, grantSeen: map[string]uint64{},
 		statusKick: make(chan struct{}, 1), revocations: &identityv1.RevocationList{MinGrantVersions: map[string]uint64{}}}
-	n.her = herhost.New(herhost.Config{Bin: cfg.HerBin, ConsoleDir: cfg.HerConsole, Socket: paths.Her(cfg.DataDir), Env: shellenv.Environ,
-		Version: Version, Logger: n.log, ExtensionHost: cfg.HerExtensionHost, Notice: n.herNotice, Mesh: n.herOnMeshNow})
-	n.openHerOnMesh()
 	if n.audit, err = OpenAudit(filepath.Join(cfg.DataDir, "audit"), key); err != nil {
 		return nil, err
 	}
@@ -282,9 +258,9 @@ func Open(cfg Config) (*Machine, error) {
 func (n *Machine) loadState() error {
 	n.loadDefaults()
 	n.loadHiddenAgents() // the machine's own, logged in or not
-	on, _ := n.st.Get(kHer)
-	n.herOn = string(on) == "1"
-	n.herData = len(on) > 0 && n.herHomeExists()
+	was, _ := n.st.Get(kHer)
+	n.herData = len(was) > 0 && herHomeExists()
+	n.forgetHer() // whoever the owner is, or none yet
 	owner, _ := n.st.Get(kOwnerID)
 	relay, _ := n.st.Get(kRelayURL)
 	n.ownerID, n.relayURL = string(owner), string(relay)
@@ -318,13 +294,10 @@ func (n *Machine) loadState() error {
 	p, _ := n.st.Get(kPaused)
 	n.paused = string(p) == "1"
 	n.loadGrants()
-	n.loadHerGrant()
 	return nil
 }
 
 func (n *Machine) Close() error {
-	n.stopHerLink()
-	n.her.Stop()
 	n.sessions.w.close()
 	err := n.st.Close()
 	n.audit.Close()
@@ -563,9 +536,7 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 	}
 	st.RunningSessions = uint32(n.sessions.Running())
 	st.Sessions = n.sessions.Counts()
-	if !n.cfg.TestBeforeHer {
-		st.Her = n.herStatus()
-	}
+	st.Her = n.herStatus()
 	st.DirectAddrs = n.directAddresses()
 	return st
 }
@@ -584,7 +555,6 @@ func (n *Machine) Run(ctx context.Context) error {
 	go n.serveControl(ctx)
 	go n.serveLocal(ctx)
 	go n.serveDirect(ctx)
-	n.startHer()
 	n.log.Info("aided machine running", "machine", n.machineID, "name", n.Name(), "relay", n.relayURL)
 	n.runLink(ctx)
 	n.mu.Lock()
@@ -628,7 +598,6 @@ func (n *Machine) applyRevocations(r *identityv1.RevocationList) {
 			n.sessions.InterruptByClient(c, "agent access revoked")
 		}
 	}
-	n.checkHerGrant()
 	n.audit.Log(AuditRecord{Kind: "revocations", Detail: fmt.Sprintf("grants=%v machines=%v devices=%v min=%v", cur.RevokedGrantIds, cur.RevokedMachineIds, cur.RevokedDeviceKeys, cur.MinGrantVersions)})
 }
 

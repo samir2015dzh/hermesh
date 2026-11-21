@@ -1,6 +1,7 @@
 // The release notes of one version, from the app's catalogs
 // (src/locales/*/releases.json): checks that the version has its own
-// highlights in both languages, and prints the GitHub release's text:
+// highlights in both languages and that the install guide (updates.json)
+// has every line, and prints the GitHub release's text:
 // which file to install for what, then the highlights.
 // The release workflow runs it before building anything.
 //
@@ -16,7 +17,7 @@ if (!version) {
   console.error("usage: release-notes.mjs <version>");
   process.exit(2);
 }
-const problem = releaseNotesProblem(enNotes, zhNotes, version);
+const problem = releaseNotesProblem(enNotes, zhNotes, version, { en: enUpdates, "zh-CN": zhUpdates });
 if (problem) {
   console.error(`release notes for ${version}: ${problem} (docs/desktop-app.md, Release highlights)`);
   process.exit(1);

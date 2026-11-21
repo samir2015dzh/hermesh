@@ -274,7 +274,6 @@ func (l *localService) ListMachines(ctx context.Context, _ *localv1.ListMachines
 			return nil, err
 		}
 		machines := l.o().onlyMachineList(m)
-		l.o().withHer(machines)
 		return &localv1.ListMachinesResponse{Machines: machines}, nil
 	}
 	machines, err := l.o().machines(ctx)
@@ -282,7 +281,6 @@ func (l *localService) ListMachines(ctx context.Context, _ *localv1.ListMachines
 		return nil, err
 	}
 	l.o().machineStatus(machines)
-	l.o().withHer(machines)
 	return &localv1.ListMachinesResponse{Machines: machines}, nil
 }
 

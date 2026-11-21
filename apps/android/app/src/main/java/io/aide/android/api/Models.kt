@@ -90,6 +90,8 @@ data class HerStatus(
     val unread: Int = 0,
     val latest: HerLatest? = null,
     val error: String = "",
+    /** Her was on there once and her data is still there. */
+    val data: Boolean = false,
 )
 
 /** An assistant's newest message, for a notification (HerStatus.latest). */

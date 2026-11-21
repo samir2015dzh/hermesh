@@ -8,7 +8,6 @@ import { Tiles } from "./overview/Tiles";
 import { dayText, Usage, useUsage } from "./overview/Usage";
 import { Working } from "./overview/Working";
 import { useNow, useStore } from "./store";
-import { notNow } from "./start";
 import { FinishedRow, useTeam } from "./team";
 import "./overview/overview.css";
 
@@ -35,7 +34,6 @@ export function Overview() {
             </div>
           </div>
           <Tiles now={now} />
-          <HerNotOn />
           {st.sessionsUnreachable.length > 0 && <Unreachable now={now} />}
           <Attention now={now} />
           <section aria-label={t("map.title")}>
@@ -95,16 +93,3 @@ function RecentlyFinished() {
   );
 }
 
-/** After Not Now, while Her runs nowhere (docs/her-team.md §4.6): a line that brings her first run back. */
-function HerNotOn() {
-  const { t } = useTranslation("common");
-  const st = useStore();
-  if (st.status?.machineOnly || st.machines.length === 0 || st.machines.some((m) => m.her?.enabled) || !notNow()) return null;
-  return (
-    <div className="ov-warn her-off" role="status">
-      <Icon name="her" />
-      <span>{t("team.herOff")}</span>
-      <button className="link" onClick={() => st.set({ selection: { kind: "her" } })}>{t("team.turnHerOn")}</button>
-    </div>
-  );
-}

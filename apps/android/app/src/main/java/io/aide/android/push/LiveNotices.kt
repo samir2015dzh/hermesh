@@ -28,12 +28,8 @@ import java.time.Instant
  *   away and it is still unanswered ESCALATE_AFTER after; never once the
  *   owner was at a desktop while it waited. From a machine that keeps
  *   nothing seen (an older one), at once, as before.
- * - Her: an environment whose unread count grew with a newer message from
- *   an assistant that is not muted. An environment seen the first time is
- *   no news.
  *
- * What is no longer pending (an answered question, Her read everywhere) is
- * withdrawn.
+ * What is no longer pending (an answered question) is withdrawn.
  */
 class LiveNotices {
     private data class Snapshot(val failed: Boolean)
@@ -43,14 +39,10 @@ class LiveNotices {
 
     private var seen = mapOf<String, Snapshot>()
     private var since: Instant? = null
-    private var her: Map<String, HerSnapshot>? = null
     private var asking = setOf<String>()
     /** Each pending question by its id: when this phone first saw it; and those it told of. */
     private var firstSeen = mapOf<String, Instant>()
     private var rang = setOf<String>()
-    private var herShown = setOf<String>()
-
-    private data class HerSnapshot(val unread: Int, val latest: String)
 
     fun look(w: World, now: Instant = Instant.now()): Changes {
         val show = mutableListOf<Notice>()
@@ -86,48 +78,14 @@ class LiveNotices {
         seen = w.sessions.mapValues { (_, s) -> Snapshot(failed(s)) }
         if (since == null) since = now
 
-        // Her.
-        val environments = w.machines.filter { it.her?.enabled == true }
-        val before = her
-        if (before != null) {
-            for (m in environments) {
-                val h = m.her!!
-                val l = h.latest ?: continue
-                val b = before[m.machineId] ?: continue
-                if (l.muted || h.unread <= b.unread || latestKey(m) == b.latest) continue
-                show += Notice(
-                    kind = "her", machineId = m.machineId, machine = m.machineName, botId = l.botId,
-                    botName = if (environments.size > 1) "${l.botName.ifEmpty { "Her" }} · ${m.machineName}" else l.botName,
-                    text = l.text,
-                    herKind = when (l.kind) {
-                        "HER_LATEST_KIND_QUESTION" -> "question"
-                        "HER_LATEST_KIND_APPROVAL" -> "approval"
-                        else -> "message"
-                    },
-                )
-                herShown = herShown + herThread(m.machineId, l.botId)
-            }
-            // Read everywhere: Her's notifications of that environment go.
-            for (m in environments) {
-                if (m.her!!.unread != 0) continue
-                val gone = herShown.filter { it.startsWith("her:${m.machineId}:") }
-                withdraw += gone
-                herShown = herShown - gone.toSet()
-            }
-        }
-        her = environments.associate { it.machineId to HerSnapshot(it.her!!.unread, latestKey(it)) }
-
         return Changes(show, withdraw)
     }
 
     private fun notice(w: World, s: Session, kind: String) = Notice(
         kind = kind, sessionId = s.sessionId, title = displayTitle(s), agent = s.agent, project = s.projectId,
         machine = w.machineName(s.machineId),
-        grant = w.clients.firstOrNull { it.clientId == s.createdBy }?.let { if (it.herMachineId.isNotEmpty()) "Her" else it.label }.orEmpty(),
+        grant = w.clients.firstOrNull { it.clientId == s.createdBy }?.label.orEmpty(),
     )
-
-    private fun latestKey(m: Machine): String =
-        m.her?.latest?.let { "${it.botId}\u0000${it.at}\u0000${it.text}" }.orEmpty()
 
     companion object {
         /** How long a desktop has to say it told the owner of a question before the phone does. */
@@ -149,8 +107,6 @@ class LiveNotices {
             }
         }
 
-        /** The thread a notice of Her's shows under (show). */
-        fun herThread(machineId: String, botId: String) = "her:$machineId:$botId"
 
         /** The question a session waits on (as the desktop's pendingQuestion). */
         fun pendingQuestion(s: Session) = if (s.status == SessionStatus.WAITING_INPUT) s.progress?.pendingQuestion else null

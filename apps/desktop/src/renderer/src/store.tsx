@@ -4,7 +4,7 @@ import type { Client, Device, GetStatusResponse, Machine, Project, Unreachable, 
 import type { Session } from "@aide/proto/session";
 import { sessionView, stateLimitsOf, unreachableMachines, withKnownState, type SessionFilter, type SessionView, type StateLimits } from "@aide/core";
 import type { Peek } from "./layout";
-import { notNow, setNotNow, startPage } from "./start";
+import { startPage } from "./start";
 import { useWorld } from "./useWorld";
 import { i18n } from "../../shared/i18n";
 import { needsUpdate } from "./skew";
@@ -23,22 +23,13 @@ export type Data = {
   devices: Device[];
 };
 
-/**
- * her: the Her entry, at an environment (a machine id) when one was chosen. progress: the work Her sent out, in the
- * environment the Her entry shows, or one of its cards opened (docs/her-team.md §15).
- */
 export type Selection =
   | { kind: "overview" }
   | { kind: "session"; id: string }
   /** DeepSeek Harness's own sessions (dsh/DSHSessions.tsx), one of them chosen. */
   | { kind: "dsh"; machine?: string; id?: string }
   /** The Claude desktop app's Claude Code sessions (claude/ClaudeSessions.tsx), one of them chosen. */
-  | { kind: "claude"; machine?: string; id?: string }
-  | { kind: "her"; machine?: string }
-  | { kind: "progress"; machine?: string; task?: ProgressTaskRef };
-
-/** A card of the Progress page: a sub-agent of Her's, by its id; opened from her conversation's busy bubble, its way back goes there. */
-export type ProgressTaskRef = { agent: string; fromHer?: boolean };
+  | { kind: "claude"; machine?: string; id?: string };
 
 export type Sheet =
   | { kind: "newGrant" }
@@ -56,14 +47,12 @@ export type Sheet =
    */
   | { kind: "wake"; clientId: string; agent: string; wake?: Wake; code?: string; name?: string }
   /**
-   * With herData, removing a machine that has Her's data: the choice to erase it too, given to run, or a line
-   * that it stays while the machine is offline (docs/her-server.md §5.6).
+   * With herData, removing a machine that still holds Her's data (from before Aide dropped her): the choice to
+   * erase it too, given to run, or a line that it stays while the machine is offline.
    */
   | { kind: "confirm"; title: string; message: string; button: string; run: (eraseHer: boolean) => Promise<unknown>; done?: string; herData?: { name: string; offline: boolean } }
   /** Erase Everything (docs/erase-everything.md). */
-  | { kind: "erase" }
-  /** Turning Her off on a machine, her data kept or erased (docs/her-server.md §5.6). */
-  | { kind: "herOff"; machineId: string; machineName: string };
+  | { kind: "erase" };
 
 export type Toast = { text: string; undo?: () => void; id: number };
 
@@ -92,11 +81,6 @@ type UI = {
   toast: Toast | null;
   /** A machine only asked to become one of the owner's devices too: logging in again shows. */
   upgrading: boolean;
-  /**
-   * Her's sub-agents that wait for the owner and that work, as the conversation the Her page follows says; null
-   * while no page of hers follows one.
-   */
-  herAgents: { waits: number; running: number } | null;
 };
 
 export type Store = Data &
@@ -166,8 +150,8 @@ function savedView(): Partial<SavedView> {
   try {
     const v: Partial<SavedView> = JSON.parse(localStorage.getItem("main-view") ?? "{}");
     const chosen = v.viewChosen === true;
-    // The list's column of earlier versions is gone: its place is the sidebar.
-    const selection = (v.selection?.kind as string) === "list" ? undefined : v.selection;
+    // The list's column of earlier versions is gone: its place is the sidebar. So are Her's pages.
+    const selection = ["list", "her", "progress"].includes(v.selection?.kind as string) ? undefined : v.selection;
     return { selection, sidebar: v.sidebar, view: chosen ? sessionView(v.view) : undefined, viewChosen: chosen, archived: v.archived, collapsed: Array.isArray(v.collapsed) ? v.collapsed : undefined };
   } catch {
     return {};
@@ -204,10 +188,9 @@ export function AideProvider({ children }: { children: ReactNode }) {
     sheet: null,
     toast: null,
     upgrading: false,
-    herAgents: null,
     ...Object.fromEntries(Object.entries(savedView()).filter(([, v]) => v !== undefined)),
   }));
-  // The start page (docs/her-team.md §14.1), chosen once from an initialized owner's world, unless something
+  // The start page, chosen once from an initialized owner's world, unless something
   // (a notification, a click) chose a page since the window opened.
   const opened = useRef(ui.selection);
   const started = useRef(false);
@@ -215,13 +198,9 @@ export function AideProvider({ children }: { children: ReactNode }) {
     const s = world.status;
     if (started.current || location.hash.startsWith("#settings") || !world.loaded || !s || !(s.initialized || s.machineOnly)) return;
     started.current = true;
-    const kind = startPage({ machines: world.machines, machineOnly: s.machineOnly, notNow: notNow(), onSession: opened.current.kind === "session" });
+    const kind = startPage({ onSession: opened.current.kind === "session" });
     if (kind) setUI((u) => (u.selection === opened.current ? { ...u, selection: { kind } } : u));
-  }, [world.loaded, world.status, world.machines]);
-  // Not Now is forgotten as soon as a machine runs Her.
-  useEffect(() => {
-    if (world.machines.some((m) => m.her?.enabled)) setNotNow(false);
-  }, [world.machines]);
+  }, [world.loaded, world.status]);
   useEffect(() => {
     if (location.hash.startsWith("#settings")) return;
     try { localStorage.setItem("main-view", JSON.stringify({ selection: ui.selection, sidebar: ui.sidebar, view: ui.view, viewChosen: ui.viewChosen, archived: ui.archived, collapsed: ui.collapsed })); }

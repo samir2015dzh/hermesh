@@ -159,14 +159,10 @@ func (n *Machine) sessionNews(s noticeSession, e *sessionv1.SessionEvent) {
 	}
 }
 
-// newsFor writes one agent the news of event e. This machine's own Her
-// gets it without the post office (docs/her-mesh.md §6.1).
+// newsFor writes one agent the news of event e.
 func (n *Machine) newsFor(to *inboxv1.Address, s noticeSession, e *sessionv1.SessionEvent) {
 	m := n.newsMessage(to, s, e)
 	if m == nil {
-		return
-	}
-	if n.herTakes(m) {
 		return
 	}
 	for attempt := range 3 {

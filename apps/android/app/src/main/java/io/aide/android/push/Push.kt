@@ -30,7 +30,6 @@ object Push {
         val open = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(EXTRA_SESSION, s.target.session)
-            putExtra(EXTRA_HER, s.target.herMachine)
         }
         val n = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_aide)
@@ -59,12 +58,11 @@ object Push {
     }
 
     const val EXTRA_SESSION = "io.aide.session"
-    const val EXTRA_HER = "io.aide.her"
 
     /** What a local notification's tap opens. */
     fun target(intent: Intent?): NoticeTarget? {
         intent ?: return null
-        val t = NoticeTarget(session = intent.getStringExtra(EXTRA_SESSION).orEmpty(), herMachine = intent.getStringExtra(EXTRA_HER).orEmpty())
+        val t = NoticeTarget(session = intent.getStringExtra(EXTRA_SESSION).orEmpty())
         return t.takeUnless { it.isEmpty }
     }
 }

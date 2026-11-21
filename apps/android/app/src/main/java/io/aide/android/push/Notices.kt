@@ -9,14 +9,14 @@ import io.aide.android.ui.t
 // brought (LiveNotices), as the iPhone's NoticeText says it.
 
 /** The notices this phone asks for (as the iPhone's defaults). */
-val noticeKinds = listOf("session_started", "question", "failure", "her")
+val noticeKinds = listOf("session_started", "question", "failure")
 
 /** A notice opened, as the app's protojson reads it. */
 fun parseNotice(json: String): Notice = ConnectClient.json.decodeFromString(Notice.serializer(), json)
 
-/** What a notice opens: a session, or Her on a machine. */
-data class NoticeTarget(val session: String = "", val herMachine: String = "") {
-    val isEmpty get() = session.isEmpty() && herMachine.isEmpty()
+/** What a notice opens: a session. */
+data class NoticeTarget(val session: String = "") {
+    val isEmpty get() = session.isEmpty()
 }
 
 /** A notice as the phone shows it: its words, the thread newer ones replace, what a tap opens. */
@@ -46,16 +46,6 @@ fun show(n: Notice): Shown = when (n.kind) {
             listOf(n.project, agentTitle(n.agent).takeIf { n.agent.isNotEmpty() }.orEmpty()).filter { it.isNotEmpty() }.joinToString(" · "),
         ).filter { it.isNotEmpty() }.joinToString("\n"),
         n.sessionId, NoticeTarget(session = n.sessionId), urgent = false,
-    )
-    "her" -> Shown(
-        n.botName.ifEmpty { "Her" },
-        when (n.herKind) {
-            // A secure card waits for the owner (Her asks no approvals: she acts).
-            "approval" -> t("Waiting for you: ${n.text}", "等你处理：${n.text}")
-            "question" -> t("Waiting for your answer: ${n.text}", "等你回答：${n.text}")
-            else -> n.text
-        },
-        "her:${n.machineId}:${n.botId}", NoticeTarget(herMachine = n.machineId), urgent = true,
     )
     else -> Shown("Aide", t("Something needs you. Open Aide to see it.", "有事需要你处理，打开 Aide 查看。"), n.kind, NoticeTarget(), urgent = false)
 }

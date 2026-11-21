@@ -139,24 +139,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      # her's debug build, kept apart from her-ci's and windows-app's (deleted with her).
-      # Saved when the tests after it fail too: this job's failures are allowed for now.
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: her -> target
-          key: ci-windows-e2e
-          save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          cache-on-failure: true
-      - name: Build Her for its end-to-end tests
-        shell: bash
-        env:
-          NIMBLEOFFICE_TOKEN: ${{ secrets.NIMBLEOFFICE_TOKEN }}
-        run: |
-          if [ -n "$NIMBLEOFFICE_TOKEN" ]; then
-            git config --global url."https://x-access-token:${NIMBLEOFFICE_TOKEN}@github.com/Eliseowzy/nimbleoffice".insteadOf "https://github.com/Eliseowzy/nimbleoffice"
-            export CARGO_NET_GIT_FETCH_WITH_CLI=true
-          fi
-          cargo build --manifest-path her/Cargo.toml -p her-cli -p her-mock
       - name: end-to-end (scripted agents)
         run: go test ./e2e -count=1 -timeout 30m
   # The desktop app (Electron): types, unit tests, and

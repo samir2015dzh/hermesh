@@ -12,7 +12,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/samir2015dzh/aide/gen/go/aide/her/v1/herv1connect"
 	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
 	"github.com/samir2015dzh/aide/gen/go/aide/machine/v1/machinev1connect"
 	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
@@ -82,7 +81,6 @@ type Machine struct {
 	Info    machinev1connect.MachineServiceClient
 	Admin   machinev1connect.MachineAdminServiceClient
 	Ops     machinev1connect.MachineOpsServiceClient
-	Her     herv1connect.HerServiceClient
 	h2      *transport.H2Client
 	direct  bool
 }
@@ -94,8 +92,7 @@ func newMachine(machineID, name string, h2 *transport.H2Client) *Machine {
 		Session: sessionv1connect.NewSessionServiceClient(h2, base, transport.ClientNoCompression),
 		Info:    machinev1connect.NewMachineServiceClient(h2, base, transport.ClientNoCompression),
 		Admin:   machinev1connect.NewMachineAdminServiceClient(h2, base, transport.ClientNoCompression),
-		Ops:     machinev1connect.NewMachineOpsServiceClient(h2, base, transport.ClientNoCompression),
-		Her:     herv1connect.NewHerServiceClient(h2, base, transport.ClientNoCompression)}
+		Ops:     machinev1connect.NewMachineOpsServiceClient(h2, base, transport.ClientNoCompression)}
 }
 
 // HTTP is the tunnel's HTTP/2 client, for the machine's plain HTTP routes

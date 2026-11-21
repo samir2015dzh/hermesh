@@ -74,23 +74,20 @@ class LiveNoticesTest {
             ),
         )
         val c = live.look(w, t0)
-        // New sessions started by others (not the owner's own), a failure, Her's message.
-        assertEquals(listOf("failure", "session_started", "session_started", "her"), c.show.map { it.kind })
+        // New sessions started by others (not the owner's own), a failure. A message of Her's, from a machine
+        // whose Aide still has her, tells nothing: this app no longer has Her.
+        assertEquals(listOf("failure", "session_started", "session_started"), c.show.map { it.kind })
         val shown = c.show.associate { (it.sessionId.ifEmpty { it.kind }) to show(it) }
-        assertEquals(setOf("s_old", "s_new", "s_her", "her"), shown.keys)
+        assertEquals(setOf("s_old", "s_new", "s_her"), shown.keys)
         assertEquals("Fix the header", shown["s_new"]!!.title)
         assertEquals("Codex on laptop started it · owner-mac\nsite · Claude Code", shown["s_new"]!!.body)
-        assertEquals("Her started it · owner-mac\nsite · Claude Code", shown["s_her"]!!.body)
+        assertEquals("her started it · owner-mac\nsite · Claude Code", shown["s_her"]!!.body)
         assertEquals("“Old” failed", shown["s_old"]!!.title)
         assertEquals("Rate limited · Codex on laptop · demo", shown["s_old"]!!.body)
-        assertEquals("Muse", shown["her"]!!.title)
-        assertEquals("Waiting for you: Your card details, please", shown["her"]!!.body)
-        assertEquals(NoticeTarget(herMachine = "m_1"), shown["her"]!!.target)
-        assertEquals("her:m_1:b_1", shown["her"]!!.thread)
         // The question answered elsewhere: its notification goes.
         assertEquals(listOf("s_ask"), c.withdraw)
 
-        // A new question in a session seen before; Her read everywhere.
+        // A new question in a session seen before.
         w = w.apply(
             watch(
                 """{"sessions":[{"sessionId":"s_new","machineId":"m_1","projectId":"site","agent":"claude","status":"SESSION_STATUS_WAITING_INPUT","createdBy":"c_1","createdAt":"2026-11-17T08:00:05Z","updatedAt":"2026-11-17T08:01:00Z","title":"Fix the header",
@@ -102,7 +99,7 @@ class LiveNoticesTest {
         val c2 = live.look(w, t0)
         assertEquals(listOf("question"), c2.show.map { it.kind })
         assertEquals("Claude Code asks · Fix the header", show(c2.show[0]).title)
-        assertEquals(listOf("her:m_1:b_1"), c2.withdraw)
+        assertEquals(emptyList<String>(), c2.withdraw)
     }
 
     // A question goes to the owner's desktop first (docs/session-states.md §7): the phone tells of it once no desktop

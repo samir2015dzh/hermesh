@@ -80,7 +80,5 @@
   },
   "tray": {
     "open": "打开 Aide"
-  },
-  "herConsole": "Her 控制台 — {{name}}",
-  "herConsoleBad": "控制台的地址不是 Aide 会打开的地址。"
+  }
 }

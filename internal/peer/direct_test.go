@@ -211,7 +211,7 @@ func TestMachineDirectWinsOverSlowRelay(t *testing.T) {
 	if wonAddr == "" {
 		t.Fatal("expected OnDirectSuccess callback with winning address")
 	}
-	res, err := n.Her.Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "ping"}})
+	res, err := echoOf(n).Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "ping"}})
 	if err != nil || string(res.Response.Result) != `"ping"` {
 		t.Fatalf("Her.Call over direct tunnel = (%v, %v)", res, err)
 	}
@@ -240,7 +240,7 @@ func TestMachineDirectFallsBackToRelay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := n.Her.Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "ping"}})
+	res, err := echoOf(n).Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "ping"}})
 	if err != nil || string(res.Response.Result) != `"ping"` {
 		t.Fatalf("Her.Call over fallback relay tunnel = (%v, %v)", res, err)
 	}
@@ -313,7 +313,7 @@ func TestClientRelayMachineSkipsDirect(t *testing.T) {
 	if n.direct {
 		t.Fatal("RelayMachine should connect via relay without using direct path")
 	}
-	res, err := n.Her.Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "ping"}})
+	res, err := echoOf(n).Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "ping"}})
 	if err != nil || string(res.Response.Result) != `"ping"` {
 		t.Fatalf("Her.Call over RelayMachine = (%v, %v)", res, err)
 	}
@@ -354,7 +354,7 @@ func TestAdoptDirect(t *testing.T) {
 	if c.AdoptDirect(fx.machineID, dup) {
 		t.Fatal("AdoptDirect should reject duplicate when live tunnel exists")
 	}
-	if _, err := dup.Her.Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "ping"}}); err == nil {
+	if _, err := echoOf(dup).Call(ctx, &herv1.CallRequest{Request: &herv1.Request{Method: "ping"}}); err == nil {
 		t.Fatal("rejected duplicate tunnel should be closed")
 	}
 }

@@ -13,7 +13,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime"
@@ -27,12 +26,10 @@ import (
 
 	localv1 "github.com/samir2015dzh/aide/gen/go/aide/local/v1"
 	"github.com/samir2015dzh/aide/gen/go/aide/local/v1/localv1connect"
-	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
 	relayv1 "github.com/samir2015dzh/aide/gen/go/aide/relay/v1"
 	"github.com/samir2015dzh/aide/gen/go/aide/relay/v1/relayv1connect"
 	"github.com/samir2015dzh/aide/internal/brandenv"
 	"github.com/samir2015dzh/aide/internal/connaddr"
-	"github.com/samir2015dzh/aide/internal/herlink"
 	"github.com/samir2015dzh/aide/internal/localipc"
 	"github.com/samir2015dzh/aide/internal/machine"
 	"github.com/samir2015dzh/aide/internal/owner"
@@ -67,8 +64,7 @@ func logger(verbose bool) *slog.Logger {
 
 // serveUntilStopped runs run in the background and serve until ctx ends,
 // or serve fails and stop ends it, then waits for run to return. The owner
-// role's run stops this computer's machine, and her with it: her has a
-// process group of its own and would outlive aided.
+// role's run stops this computer's machine.
 func serveUntilStopped(ctx context.Context, stop context.CancelFunc, run func(context.Context), serve func(context.Context) error) error {
 	done := make(chan struct{})
 	go func() {
@@ -156,11 +152,8 @@ A computer that runs no coding agents can approve instead: aided device.`}
 				*o.dst = o.v
 			}
 		}
-		her := herBin()
 		return machine.Config{DataDir: filepath.Join(dataDir, "machine"), Logger: logger(verbose), Providers: providers(), Limits: lim, WorkspaceMode: workspaceMode,
-			HerBin: her, HerConsole: herConsole(her), HerExtensionHost: herExtensionHost(), NewHerLink: herlink.New,
-			ClaudeUsage:   os.Getenv("AIDE_NO_CLAUDE_USAGE") != "1",
-			TestBeforeHer: os.Getenv("AIDE_TEST_BEFORE_HER") == "1"}
+			ClaudeUsage: os.Getenv("AIDE_NO_CLAUDE_USAGE") != "1"}
 	}
 	openMachine := func() (*machine.Machine, error) { return machine.Open(machineConfig()) }
 
@@ -246,12 +239,7 @@ A computer that runs no coding agents can approve instead: aided device.`}
 						return n.Busy()
 					}
 					return 0
-				}, func() int {
-					if n := m(); n != nil {
-						return n.HerPid()
-					}
-					return 0
-				})
+				}, func() int { return 0 }) // no process of Her's to throttle with aided: Aide no longer has her
 				go saver.Run(ctx)
 			}
 			if ownerMode {
@@ -449,10 +437,6 @@ installs the background service.`,
 				fmt.Println("  Install one as this user and sign in once (run `claude`); `aided doctor` checks again.")
 			}
 			fmt.Printf("\nNext\n  add a project   aided project add ~/code/app   (or in the Aide app)\n")
-			// Her, when she is installed here: on in the app, then hers to talk to anywhere, here too.
-			if herBin() != "" {
-				fmt.Printf("  Her             turn Her on for this machine in the Aide app, then talk to her there or here: aided her\n")
-			}
 			fmt.Printf("  check it all    aided doctor\n  its log         %s\n  every command   aided --help\n",
 				logHint(filepath.Join(dataDir, "logs", "aided.log"), true))
 			if noServiceWhy != nil {
@@ -509,7 +493,6 @@ installs the background service.`,
 				}
 			}
 			ok = serviceLine(running) && ok
-			fmt.Printf("her          %s\n", herLine(c.Her, running))
 			if c.Power != nil && c.Power.Supported {
 				fmt.Printf("power        %s\n", powerLine(c.Power))
 			}
@@ -559,7 +542,6 @@ installs the background service.`,
 			fmt.Printf("machine   %s · %s · Aide %s\n", c.MachineID, paired, c.Version)
 			serviceLine(running)
 			fmt.Printf("updates      %s\n", update.Line(dataDir))
-			fmt.Printf("her          %s\n", herLine(c.Her, running))
 			if c.Power != nil && c.Power.Supported {
 				fmt.Printf("power        %s\n", powerLine(c.Power))
 			}
@@ -660,9 +642,8 @@ in), a LaunchAgent on macOS, a Task Scheduler logon task on Windows.
 		Use:   "update",
 		Short: "Update Aide here to the latest release and restart the service",
 		Long: `Update aided and aide, where they are installed, to the latest signed
-release, and restart the background service; her and its console, Her's,
-when they are installed beside them. When that would stop a session, it
-asks first.
+release, and restart the background service. When that would stop a
+session, it asks first.
 
 Aide also updates itself when no session is running, unless
 "aided update auto off" turned that off.`,
@@ -691,7 +672,7 @@ Aide also updates itself when no session is running, unless
 			}
 			return shellenv.OnUserPath(args[1], args[0] == "add")
 		}}
-	root.AddCommand(eraseCommand(&dataDir), uninstallCommand(&dataDir), herCommand(&dataDir), dshBridgeCommand())
+	root.AddCommand(eraseCommand(&dataDir), uninstallCommand(&dataDir), dshBridgeCommand())
 	root.AddCommand(run, pair, doctor, status, audit, svc, upd, helper, messageMCP, userPath, projects, rootsCommand(&dataDir, openMachine), configCommand(&dataDir, openMachine),
 		&cobra.Command{Use: "version", Short: "Print the version", Args: cobra.NoArgs, Run: func(*cobra.Command, []string) { fmt.Println(machine.Version) }})
 	return root
@@ -809,79 +790,6 @@ func providers() map[string]provider.Provider {
 		}
 	}
 	return ps
-}
-
-// herBin is the her program (docs/her-server.md §6.4): $AIDE_HER_BIN, as
-// AIDE_<AGENT>_BIN is a coding agent's, else her beside this program (in
-// the Mac app both are in Contents/Helpers); "" when there is none.
-func herBin() string {
-	bin := brandenv.Get("HER_BIN")
-	if bin == "" {
-		exe, err := os.Executable()
-		if err != nil {
-			return ""
-		}
-		if exe, err = filepath.EvalSymlinks(exe); err != nil {
-			return ""
-		}
-		bin = filepath.Join(filepath.Dir(exe), "her")
-		if runtime.GOOS == "windows" {
-			bin += ".exe"
-		}
-	}
-	if st, err := os.Stat(bin); err != nil || st.IsDir() {
-		return ""
-	}
-	return bin
-}
-
-// herExtensionHost: whether the owner's own Chrome reaches her through the
-// Aide extension, the browsers starting her as its host while Her is on.
-// For the her Aide ships, never one $AIDE_HER_BIN names (tests and
-// development), which would take the owner's Chrome to that one's home.
-func herExtensionHost() bool {
-	return brandenv.Get("HER_BIN") == ""
-}
-
-// herConsole is the folder of her's console: $AIDE_HER_CONSOLE, else
-// her-console/ beside her, where the install command puts it, else the Mac
-// app's Contents/Resources/console (her is in Contents/Helpers, where a
-// signed bundle holds only code).
-func herConsole(her string) string {
-	if dir := brandenv.Get("HER_CONSOLE"); dir != "" || her == "" {
-		return dir
-	}
-	dir := filepath.Join(filepath.Dir(her), "her-console")
-	if app := filepath.Join(filepath.Dir(her), "..", "Resources", "console"); !isDir(dir) && isDir(app) {
-		return app
-	}
-	return dir
-}
-
-// herLine is how Her is here, for doctor and status: her's version where it
-// is installed, whether Her is on, and whether her runs (up: aided does).
-func herLine(st *machinev1.HerStatus, up bool) string {
-	switch why := st.GetUnsupported(); {
-	case why == "no her":
-		return "not installed"
-	case why != "":
-		return "can't run here (" + why + ")"
-	}
-	line := "installed"
-	if out, err := exec.Command(herBin(), "--version").Output(); err == nil {
-		line = strings.TrimPrefix(strings.TrimSpace(string(out)), "her ")
-	}
-	switch {
-	case !st.GetEnabled():
-		return line + ", off"
-	case st.GetRunning():
-		return line + ", on, running"
-	case st.GetError() != "":
-		return line + ", on, NOT RUNNING: " + st.GetError()
-	case up:
-		return line + ", on, starting"
-	}
-	return line + ", on"
 }
 
 func isDir(path string) bool {
